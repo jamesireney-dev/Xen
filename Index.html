@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>xen — Automated Google reviews</title>
+<style>
+:root{--bg:#0b0b0d;--card:#151518;--line:#26262b;--text:#f2f2f3;--mute:#9a9aa3;--acc:#f5b301;--ok:#22c55e;--bad:#ef4444;--blue:#3b82f6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:var(--acc)}
+.wrap{max-width:860px;margin:0 auto;padding:16px}
+h1{font-size:26px;margin:8px 0 12px}h2{font-size:19px;margin:20px 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat b{display:block;font-size:26px}.stat span{color:var(--mute);font-size:13px}
+input,textarea,select{width:100%;padding:12px;margin:5px 0;background:#0f0f12;border:1px solid var(--line);border-radius:10px;color:var(--text);font:inherit}
+button{background:var(--acc);color:#111;border:0;border-radius:10px;padding:11px 16px;font:inherit;font-weight:600;cursor:pointer}
+button.sec{background:#26262b;color:var(--text)}button:disabled{opacity:.5}
+.nav{display:flex;gap:6px;overflow-x:auto;margin:10px 0;padding-bottom:4px}
+.nav a{flex:none;padding:8px 14px;border-radius:20px;background:#1c1c21;color:var(--text);text-decoration:none;font-size:14px}
+.nav a.on{background:var(--acc);color:#111;font-weight:600}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mute{color:var(--mute);font-size:13px}.tag{font-size:12px;padding:2px 8px;border-radius:12px;background:#26262b}
+.sent,.responded{color:var(--ok)}.failed{color:var(--bad)}.pending,.opened{color:var(--acc)}
+.item{padding:10px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}
+.bar{height:8px;background:#26262b;border-radius:6px;overflow:hidden;flex:1}.bar i{display:block;height:100%;background:var(--acc)}
+.stars button{font-size:34px;background:none;color:var(--acc);padding:2px 6px}
+#toast{position:fixed;left:12px;right:12px;bottom:14px;background:#26262b;border:1px solid var(--line);padding:12px;border-radius:12px;display:none;z-index:9}
+.hero{text-align:center;padding:36px 0 20px}.hero h1{font-size:34px}
+.err{color:var(--bad);font-size:14px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB_URL = 'https://yehtzllmjkjrfzyjfnpv.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllaHR6bGxtamtqcmZ6eWpmbnB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NzgzNDgsImV4cCI6MjEwNTA1NDM0OH0.s_n1aZQgnkahgQNyvcYGTfYbEXqgx2MH2Fp_mDJ60GQ';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+const app = document.getElementById('app');
+const state = { session: null, business: null, selected: new Set() };
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'business';
+const go = p => { location.hash = '#' + p; };
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', 4500); }
+const fmt = d => d ? new Date(d).toLocaleString() : '—';
+const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+
+async function init() {
+  const { data } = await sb.auth.getSession();
+  state.session = data.session;
+  sb.auth.onAuthStateChange((_e, s) => { state.session = s; });
+  window.addEventListener('hashchange', route);
+  route();
+}
+
+async function loadBusiness() {
+  const uid = state.session.user.id;
+  let { data: b } = await sb.from('businesses').select('*').eq('owner_id', uid).limit(1).maybeSingle();
+  if (!b) {
+    const name = (state.session.user.user_metadata || {}).business_name || 'My Business';
+    const slug = slugify(name) + '-' + Math.random().toString(36).slice(2, 6);
+    const { data: nb, error } = await sb.from('businesses').insert({ owner_id: uid, name, slug }).select().single();
+    if (error) throw error;
+    b = nb;
+  }
+  state.business = b;
+}
+
+async function route() {
+  const raw = location.hash.replace(/^#/, '') || '/';
+  const [path, qs] = raw.split('?');
+  const q = new URLSearchParams(qs || '');
+  try {
+    if (path.startsWith('/r/')) return publicReview(decodeURIComponent(path.slice(3)), q.get('t'));
+    if (path.startsWith('/dashboard')) {
+      if (!state.session) return go('/login');
+      if (!state.business) await loadBusiness();
+      const tab = path.split('/')[2] || 'overview';
+      return dashboard(tab);
+    }
+    if (path === '/login' || path === '/signup') return authView(path.slice(1));
+    return landing();
+  } catch (e) { app.innerHTML = `<div class="wrap"><p class="err">Error: ${esc(e.message)}</p></div>`; }
+}
+
+function landing() {
+  if (state.session) return go('/dashboard/overview');
+  app.innerHTML = `<div class="wrap"><div class="hero">
+    <h1>Turn happy customers into 5-star Google reviews</h1>
+    <p class="mute">xen sends the review request, sends happy customers to Google, and catches unhappy feedback privately first.</p>
+    <p><button onclick="go('/signup')">Start free</button> <button class="sec" onclick="go('/login')">Log in</button></p></div>
+    <div class="card"><b>1. Send the request</b><div class="mute">Email or text customers right after their visit.</div></div>
+    <div class="card"><b>2. Route the sentiment</b><div class="mute">4–5 stars go to Google. 1–3 stars go to a private form.</div></div>
+    <div class="card"><b>3. Watch reviews grow</b><div class="mute">Track ratings, requests and conversion in one dashboard.</div></div></div>`;
+}
+
+function authView(mode) {
+  const su = mode === 'signup';
+  app.innerHTML = `<div class="wrap"><h1>${su ? 'Start your free trial' : 'Log in'}</h1><div class="card">
+    ${su ? '<input id="bn" placeholder="Business name">' : ''}
+    <input id="em" type="email" placeholder="Email" autocomplete="email">
+    <input id="pw" type="password" placeholder="Password (min 6 characters)" autocomplete="${su ? 'new-password' : 'current-password'}">
+    <p id="msg" class="err"></p>
+    <button id="go">${su ? 'Create account' : 'Log in'}</button>
+    <p class="mute">${su ? 'Have an account? <a href="#/login">Log in</a>' : 'New here? <a href="#/signup">Sign up</a>'}</p></div></div>`;
+  document.getElementById('go').onclick = async () => {
+    const btn = document.getElementById('go'), msg = document.getElementById('msg');
+        if (error) throw error;
+        if (data.session) { state.session = data.session; return go('/dashboard/overview'); }
+        msg.className = 'mute'; msg.textContent = 'Account created. Check your email to confirm it, then log in.';
+      } else {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        state.session = data.session; state.business = null; go('/dashboard/overview');
+      }
+    } catch (e) { msg.className = 'err'; msg.textContent = e.message; }
+    btn.disabled = false;
+  };
+}
+
+async function logout() { await sb.auth.signOut(); state.session = null; state.business = null; go('/'); }
+
+function shell(tab, inner) {
+  const tabs = ['overview', 'customers', 'requests', 'reviews', 'settings'];
+  const link = location.origin + location.pathname + '#/r/' + state.business.slug;
+  app.innerHTML = `<div class="wrap">
+    <div class="row"><b>${esc(state.business.name)}</b><button class="sec" onclick="logout()">Log out</button></div>
+    <div class="nav">${tabs.map(t => `<a href="#/dashboard/${t}" class="${t === tab ? 'on' : ''}">${t[0].toUpperCase() + t.slice(1)}</a>`).join('')}</div>
+    ${inner}
+    <p class="mute">Your public review link: <a href="${esc(link)}" target="_blank">${esc(link)}</a></p></div>`;
+}
+
+async function dashboard(tab) {
+  const b = state.business;
+  if (tab === 'customers') return customersTab();
+  if (tab === 'requests') {
+    const { data } = await sb.from('review_requests').select('id,channel,status,sent_at,responded_at,created_at,customers(name)').eq('business_id', b.id).order('created_at', { ascending: false }).limit(200);
+    return shell(tab, `<h1>Requests</h1><div class="card">${(data || []).map(r => `<div class="item"><div class="row"><b>${esc(r.customers?.name || '—')}</b><span class="${esc(r.status)}">${esc(r.status)}</span></div><div class="mute">${esc(r.channel)} · sent ${fmt(r.sent_at)} · responded ${fmt(r.responded_at)}</div></div>`).join('') || '<p class="mute">No requests yet. Add customers and send from the Customers tab.</p>'}</div>`);
+      <label class="mute">Business name</label><input id="sn" value="${esc(b.name)}">
+      <label class="mute">Google review link (where happy customers are sent)</label>
+      <input id="sg" placeholder="https://g.page/r/.../review" value="${esc(b.google_review_link || '')}">
+      <p class="mute">Find it in Google Business Profile → Get more reviews → Share review form.</p>
+      <button id="ss">Save</button></div>`), document.getElementById('ss').onclick = async () => {
+        const { data, error } = await sb.from('businesses').update({ name: document.getElementById('sn').value.trim() || b.name, google_review_link: document.getElementById('sg').value.trim() || null }).eq('id', b.id).select().single();
+        if (error) return toast(error.message);
+        state.business = data; toast('Saved'); route();
+      };
+  }
+  // overview
+  const [{ data: st }, { data: rs }] = await Promise.all([
+    sb.rpc('dashboard_stats', { p_business_id: b.id }),
+    sb.from('reviews').select('*').eq('business_id', b.id).order('created_at', { ascending: false }).limit(200)
+  ]);
+  const s = st || {}, rows = rs || [];
+  const counts = [5, 4, 3, 2, 1].map(n => [n, rows.filter(r => r.rating === n).length]);
+  const max = Math.max(1, ...counts.map(c => c[1]));
+  shell('overview', `<h1>Overview</h1><div class="grid">
+    <div class="card stat"><b>${s.average_rating ?? 0}</b><span>Average rating</span></div>
+    <div class="card stat"><b>${s.total_reviews ?? 0}</b><span>Total reviews</span></div>
+    <div class="card stat"><b>${s.requests_sent ?? 0}</b><span>Requests sent</span></div>
+    <div class="card stat"><b>${s.conversion_pct ?? 0}%</b><span>Requests → reviews</span></div></div>
+    <h2>Rating breakdown</h2><div class="card">${counts.map(([n, c]) => `<div class="row" style="margin:6px 0"><span style="width:28px">${n}★</span><div class="bar"><i style="width:${c / max * 100}%"></i></div><span style="width:30px;text-align:right">${c}</span></div>`).join('')}</div>
+    <h2>Recent reviews</h2><div class="card">${rows.slice(0, 5).map(reviewHtml).join('') || '<p class="mute">No reviews yet. Share your review link or send requests.</p>'}</div>`);
+}
+
+function reviewHtml(r) {
+  return `<div class="item"><div class="row"><b>${esc(r.reviewer_name || 'Anonymous')}</b><span style="color:var(--acc)">${stars(r.rating)}</span></div>
+    <div>${r.comment ? esc(r.comment) : '<i class="mute">No comment</i>'}</div>
+    <div class="row mute"><span>${r.is_public ? 'Public (Google)' : 'Private feedback'} · ${new Date(r.created_at).toLocaleDateString()} · ${esc(r.status)}</span>
+}
+
+async function customersTab() {
+  const b = state.business;
+  const { data } = await sb.from('customers').select('*').eq('business_id', b.id).order('created_at', { ascending: false });
+  const cs = data || [];
+  shell('customers', `<h1>Customers</h1><div class="card"><b>Add a customer</b>
+    <input id="cn" placeholder="Name"><input id="ce" type="email" placeholder="Email"><input id="cp" placeholder="Phone (+15551234567)">
+    <button id="ca">Add customer</button></div>
+    <div class="card"><b>Import from CSV</b><div class="mute">Columns: name, email, phone (header row required)</div>
+    <input id="cf" type="file" accept=".csv,text/csv"></div>
+    <div class="card"><div class="row"><b>${cs.length} customers</b><span class="mute" id="sc">${state.selected.size} selected</span></div>
+    ${cs.map(c => `<label class="item row" style="cursor:pointer"><span><b>${esc(c.name)}</b><br><span class="mute">${esc(c.email || '')} ${esc(c.phone || '')}</span></span>
+      <input type="checkbox" style="width:auto" ${state.selected.has(c.id) ? 'checked' : ''} onchange="toggleSel('${esc(c.id)}',this.checked)"></label>`).join('') || '<p class="mute">No customers yet.</p>'}
+    <div class="row" style="margin-top:10px"><button onclick="sendReq('email')">Send email request</button><button class="sec" onclick="sendReq('sms')">Send SMS request</button></div></div>`);
+  document.getElementById('ca').onclick = async () => {
+    const name = document.getElementById('cn').value.trim();
+    if (!name) return toast('Enter a name');
+    const { error } = await sb.from('customers').insert({ business_id: b.id, name, email: document.getElementById('ce').value.trim() || null, phone: document.getElementById('cp').value.trim() || null });
+    if (error) return toast(error.message);
+    customersTab();
+  };
+  document.getElementById('cf').onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    const rows = parseCsv(await file.text());
+    if (!rows.length) return toast('No valid rows found. Need a header: name,email,phone');
+    const { error } = await sb.from('customers').insert(rows.map(r => ({ business_id: b.id, ...r })));
+    if (error) return toast(error.message);
+    toast('Imported ' + rows.length + ' customers'); customersTab();
+  };
+}
+
+function parseCsv(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const split = l => (l.match(/("([^"]|"")*"|[^,]*)(,|$)/g) || []).map(x => x.replace(/,$/, '').replace(/^"|"$/g, '').replace(/""/g, '"').trim());
+  const head = split(lines[0]).map(h => h.toLowerCase());
+  const ni = head.indexOf('name'), ei = head.indexOf('email'), pi = head.indexOf('phone');
+  if (ni < 0) return [];
+  return lines.slice(1).map(l => { const c = split(l); return { name: c[ni] || '', email: (ei >= 0 && c[ei]) || null, phone: (pi >= 0 && c[pi]) || null }; }).filter(r => r.name);
+}
+
+function toggleSel(id, on) { on ? state.selected.add(id) : state.selected.delete(id); const el = document.getElementById('sc'); if (el) el.textContent = state.selected.size + ' selected'; }
+
+async function sendReq(channel) {
+  const ids = [...state.selected];
+  if (!ids.length) return toast('Select at least one customer');
+  toast('Sending…');
+  try {
+    const res = await fetch(SB_URL + '/functions/v1/send-review-request', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + state.session.access_token, apikey: SB_KEY }, body: JSON.stringify({ customer_ids: ids, channel }) });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || 'Send failed');
+    const ok = j.results.filter(r => r.status === 'sent').length, bad = j.results.filter(r => r.status !== 'sent');
+    toast(`${ok} sent, ${bad.length} failed` + (bad[0] ? ' — ' + bad[0].error : ''));
+    state.selected.clear();
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+async function publicReview(slug, token) {
+  const { data: biz } = await sb.from('business_public_info').select('*').eq('slug', slug).maybeSingle();
+  if (!biz) { app.innerHTML = '<div class="wrap"><h1>Page not found</h1></div>'; return; }
+  let rating = 0;
+  const draw = () => {
+    app.innerHTML = `<div class="wrap"><h1>How was your visit to ${esc(biz.name)}?</h1><div class="card">
+      <div class="stars" style="text-align:center">${[1, 2, 3, 4, 5].map(n => `<button onclick="setRating(${n})">${n <= rating ? '★' : '☆'}</button>`).join('')}</div>
+      ${rating ? `<input id="rn" placeholder="Your name (optional)"><input id="re" type="email" placeholder="Email (optional)">
+      <textarea id="rc" rows="4" placeholder="${rating >= 4 ? 'Tell us what you loved (optional)' : 'What went wrong? We’ll make it right.'}"></textarea>
+      <p id="rm" class="err"></p><button id="rs">Submit</button>` : '<p class="mute" style="text-align:center">Tap a star to rate</p>'}</div></div>`;
+    if (rating) document.getElementById('rs').onclick = submit;
+  };
+  window.setRating = n => { rating = n; draw(); };
+  const submit = async () => {
+    const btn = document.getElementById('rs'); btn.disabled = true;
+    const { data, error } = await sb.rpc('submit_review', { p_slug: slug, p_rating: rating, p_comment: document.getElementById('rc').value.trim() || null, p_reviewer_name: document.getElementById('rn').value.trim() || null, p_reviewer_email: document.getElementById('re').value.trim() || null, p_request_token: token || null });
+    if (error) { document.getElementById('rm').textContent = error.message; btn.disabled = false; return; }
+    if (data.is_public && data.redirect_url) {
+      app.innerHTML = '<div class="wrap"><h1>Thank you!</h1><p>Taking you to Google to post your review…</p></div>';
+      setTimeout(() => location.href = data.redirect_url, 900);
+    } else if (data.is_public) {
+      app.innerHTML = `<div class="wrap"><h1>Thank you!</h1><p>We really appreciate your kind words.</p></div>`;
+    } else {
+      app.innerHTML = `<div class="wrap"><h1>Thank you for telling us</h1><p>The team at ${esc(biz.name)} will use your feedback to make things right.</p></div>`;
+    }
+  };
+  draw();
+}
+
+init();
+</script>
+</body>
+</html>

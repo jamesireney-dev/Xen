@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leave your info</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#f7fafb;--ink:#10202b;--mute:#5d6b76;--line:#dbe4e9;--card:#fff;--brand:#0e7c86;--brand-d:#0a5f67;--pink:#e8457c;--ok:#1a7f4b;--err:#c0392b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;min-height:100vh}
+h1,h2{font-family:"Bricolage Grotesque",Inter,sans-serif;margin:0 0 .4rem}
+main{max-width:480px;margin:0 auto;padding:2.5rem 1.25rem}
+.logo{font:700 1.5rem "Bricolage Grotesque";color:var(--brand);text-align:center;margin-bottom:1.5rem}
+.logo i{color:var(--pink);font-style:normal}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:1.5rem}
+label{display:block;font-weight:500;margin:.9rem 0 .3rem}
+input{width:100%;padding:.8rem .9rem;border:1px solid var(--line);border-radius:8px;font:inherit}
+input:focus{outline:2px solid var(--brand);outline-offset:1px}
+button{width:100%;margin-top:1.4rem;font:600 1rem Inter;padding:.85rem;border-radius:9px;border:0;background:var(--pink);color:#fff;cursor:pointer}
+button:disabled{opacity:.5}
+.mute{color:var(--mute);font-size:.9rem;margin-top:.25rem}
+.msg{padding:.6rem .8rem;border-radius:8px;margin:0 0 1rem;font-size:.92rem}
+.msg.err{background:#fdecea;color:var(--err)}
+.center{text-align:center;padding-top:2rem}
+</style>
+</head>
+<body>
+<main>
+<div class="logo">xen<i>.</i></div>
+<div id="app"></div>
+</main>
+<script>
+const SUPABASE_URL = "https://yehtzllmjkjrfzyjfnpv.supabase.co";
+const SUPABASE_KEY = "sb_publishable_phooBJCzDi2N87eXoC3Vpw_sc4EPa5k";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = (s) => document.querySelector(s);
+const app = $("#app");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const slug = decodeURIComponent((location.hash.match(/^#\/add\/([^?]+)/i) || [])[1] || "");
+
+function renderForm() {
+  app.innerHTML = `<div class="card">
+    <h1>Thanks for stopping by!</h1>
+    <p class="mute">Leave your info and we'll send you a quick link to share your experience.</p>
+    <form id="f">
+      <label>Name</label><input id="n" required>
+      <label>Phone <span class="mute">(or email below)</span></label><input id="p" type="tel" placeholder="+13055551234">
+      <label>Email</label><input id="e" type="email">
+      <button>Send me the link</button>
+    </form>
+  </div>`;
+  $("#f").onsubmit = async (ev) => {
+    ev.preventDefault();
+    const name = $("#n").value.trim(), phone = $("#p").value.trim(), email = $("#e").value.trim();
+    if (!phone && !email) return flash("Add a phone number or an email.");
+    const btn = ev.target.querySelector("button"); btn.disabled = true;
+    const { data, error } = await sb.rpc("public_add_customer", { p_slug: slug, p_name: name, p_phone: phone || null, p_email: email || null });
+    btn.disabled = false;
+    const row = data && data[0];
+    if (error || !row || !row.ok) return flash((row && row.message) || (error && error.message) || "Something went wrong.");
+    app.innerHTML = `<div class="card center"><h2>You're all set!</h2><p class="mute">Keep an eye on your ${email ? "inbox" : "phone"} — we'll send the review link shortly.</p></div>`;
+  };
+}
+function flash(text) {
+  const box = document.createElement("div");
+  box.className = "msg err"; box.textContent = text;
+  app.querySelector(".card").prepend(box);
+}
+
+if (!slug) {
+  app.innerHTML = `<div class="card center"><h2>Link not found</h2><p class="mute">This intake link is missing a business.</p></div>`;
+} else {
+  renderForm();
+}
+</script>
+</body>
+  </html>

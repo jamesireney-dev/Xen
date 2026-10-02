@@ -8,22 +8,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-:root{--bg:#f7fafb;--ink:#10202b;--mute:#5d6b76;--line:#dbe4e9;--card:#fff;--brand:#0e7c86;--brand-d:#0a5f67;--pink:#e8457c;--ok:#1a7f4b;--err:#c0392b}
+:root{--bg:#06110e;--ink:#f3f6f4;--mute:#8ea39b;--line:#1d2f29;--card:#0e1c18;--brand:#22c55e;--brand-d:#16a34a;--pink:#22c55e;--ok:#7fe3a4;--err:#f87171}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;min-height:100vh}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -10%, #0d2219 0%, var(--bg) 55%);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;min-height:100vh}
 h1,h2{font-family:"Bricolage Grotesque",Inter,sans-serif;margin:0 0 .4rem}
 main{max-width:480px;margin:0 auto;padding:2.5rem 1.25rem}
 .logo{font:700 1.5rem "Bricolage Grotesque";color:var(--brand);text-align:center;margin-bottom:1.5rem}
 .logo i{color:var(--pink);font-style:normal}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:1.5rem}
 label{display:block;font-weight:500;margin:.9rem 0 .3rem}
-input{width:100%;padding:.8rem .9rem;border:1px solid var(--line);border-radius:8px;font:inherit}
+input{width:100%;padding:.8rem .9rem;border:1px solid var(--line);border-radius:8px;font:inherit;background:#0a1512;color:var(--ink)}
 input:focus{outline:2px solid var(--brand);outline-offset:1px}
-button{width:100%;margin-top:1.4rem;font:600 1rem Inter;padding:.85rem;border-radius:9px;border:0;background:var(--pink);color:#fff;cursor:pointer}
+button{width:100%;margin-top:1.4rem;font:600 1rem Inter;padding:.85rem;border-radius:9px;border:0;background:var(--pink);color:#06150f;cursor:pointer}
 button:disabled{opacity:.5}
 .mute{color:var(--mute);font-size:.9rem;margin-top:.25rem}
 .msg{padding:.6rem .8rem;border-radius:8px;margin:0 0 1rem;font-size:.92rem}
-.msg.err{background:#fdecea;color:var(--err)}
+.msg.err{background:rgba(248,113,113,.12);color:var(--err)}
 .center{text-align:center;padding-top:2rem}
 </style>
 </head>
@@ -78,4 +78,4 @@ if (!slug) {
 }
 </script>
 </body>
-  </html>
+</html>

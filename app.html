@@ -13,9 +13,11 @@
 body{margin:0;background:radial-gradient(1200px 600px at 50% -10%, #0d2219 0%, var(--bg) 55%);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif}
 h1,h2,h3{font-family:"Bricolage Grotesque",Inter,sans-serif;margin:0 0 .5rem}
 main{max-width:640px;margin:0 auto;padding:1rem 1rem 4rem}
-header.top{display:flex;justify-content:space-between;align-items:center;padding:1rem;max-width:640px;margin:0 auto}
+header.top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:1rem;max-width:640px;margin:0 auto;flex-wrap:wrap}
 .logo{font:700 1.5rem "Bricolage Grotesque";color:var(--brand)}
 .logo i{color:var(--pink);font-style:normal}
+.topright{display:flex;align-items:center;gap:.5rem}
+select.switcher{width:auto;padding:.5rem .7rem;font-size:.9rem;background:#0a1512;color:var(--ink);border:1px solid var(--line);border-radius:8px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem;margin-bottom:1rem}
 label{display:block;font-weight:500;margin:.75rem 0 .25rem}
 input,textarea,select{width:100%;padding:.7rem .8rem;border:1px solid var(--line);border-radius:8px;font:inherit;background:#0a1512;color:var(--ink)}
@@ -59,13 +61,15 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = (s) => document.querySelector(s);
 const app = $("#app");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let state = { user: null, biz: null, customers: [], requests: [], tab: "customers" };
+const CUR_BIZ_KEY = "xen_current_biz";
+let state = { user: null, businesses: [], bizId: null, customers: [], requests: [], tab: "customers" };
 
 function flash(el, text, kind = "err") {
   const box = document.createElement("div");
   box.className = "msg " + kind; box.textContent = text;
   el.prepend(box); setTimeout(() => box.remove(), 6000);
 }
+function currentBiz() { return state.businesses.find(b => b.id === state.bizId) || null; }
 
 /* ---------- routing ---------- */
 async function route() {
@@ -76,14 +80,24 @@ async function route() {
   state.user = session?.user ?? null;
   if (!state.user) return renderAuth();
   await loadAll();
-  state.biz ? renderDashboard() : renderSetup();
+  currentBiz() ? renderDashboard() : renderSetup();
 }
 window.addEventListener("hashchange", route);
 
 function renderTop() {
+  const switcher = state.businesses.length ? `
+    <select class="switcher" id="bizsw">
+      ${state.businesses.map(b => `<option value="${b.id}" ${b.id === state.bizId ? "selected" : ""}>${esc(b.name)}</option>`).join("")}
+      <option value="__new__">+ Add business</option>
+    </select>` : "";
   $("#top").innerHTML = `<span class="logo">xen<i>.</i></span>` +
-    (state.user ? `<button class="ghost" id="out">Sign out</button>` : "");
-  const o = $("#out"); if (o) o.onclick = async () => { await sb.auth.signOut(); state = { user:null,biz:null,customers:[],requests:[],tab:"customers" }; route(); };
+    (state.user ? `<div class="topright">${switcher}<button class="ghost" id="out">Sign out</button></div>` : "");
+  const o = $("#out"); if (o) o.onclick = async () => { await sb.auth.signOut(); state = { user:null,businesses:[],bizId:null,customers:[],requests:[],tab:"customers" }; localStorage.removeItem(CUR_BIZ_KEY); route(); };
+  const sw = $("#bizsw"); if (sw) sw.onchange = () => {
+    if (sw.value === "__new__") { renderSetup(); return; }
+    state.bizId = sw.value; localStorage.setItem(CUR_BIZ_KEY, state.bizId);
+    loadBizData().then(renderDashboard);
+  };
 }
 
 /* ---------- public review landing: rate first, then route ---------- */
@@ -151,48 +165,59 @@ function renderAuth(mode = "in") {
 
 /* ---------- data ---------- */
 async function loadAll() {
-  const { data: biz } = await sb.from("businesses").select("*").order("created_at").limit(1).maybeSingle();
-  state.biz = biz;
-  if (!biz) return;
+  const { data: list } = await sb.from("businesses").select("*").order("created_at");
+  state.businesses = list || [];
+  const saved = localStorage.getItem(CUR_BIZ_KEY);
+  if (saved && state.businesses.some(b => b.id === saved)) state.bizId = saved;
+  else state.bizId = state.businesses[0]?.id || null;
+  if (state.bizId) { localStorage.setItem(CUR_BIZ_KEY, state.bizId); await loadBizData(); }
+}
+
+async function loadBizData() {
+  if (!state.bizId) return;
   const [c, r] = await Promise.all([
-    sb.from("customers").select("*").eq("business_id", biz.id).order("created_at", { ascending: false }),
-    sb.from("review_requests").select("*, customers(name)").eq("business_id", biz.id).order("created_at", { ascending: false }).limit(50),
+    sb.from("customers").select("*").eq("business_id", state.bizId).order("created_at", { ascending: false }),
+    sb.from("review_requests").select("*, customers(name)").eq("business_id", state.bizId).order("created_at", { ascending: false }).limit(50),
   ]);
   state.customers = c.data || []; state.requests = r.data || [];
 }
 
-/* ---------- business setup ---------- */
+/* ---------- business setup (also used for "add another business") ---------- */
 function renderSetup() {
   renderTop();
-  app.innerHTML = `<div class="card"><h2>Set up your business</h2>
-    <p class="mute">Customers will be sent to your Google review page.</p>
+  app.innerHTML = `<div class="card"><h2>${state.businesses.length ? "Add another business" : "Set up your business"}</h2>
+    <p class="mute">Customers will be sent to this business's Google review page.</p>
     <form id="f"><label>Business name</label><input id="n" required>
     <label>Google review link</label><input id="u" type="url" placeholder="https://g.page/r/…/review" required>
     <p class="mute" style="font-size:.85rem;margin:.25rem 0 0">Find it in Google Business Profile → Get more reviews → Share review form.</p>
-    <div style="margin-top:1rem" class="row"><button>Save business</button></div></form></div>`;
+    <div style="margin-top:1rem" class="row"><button>Save business</button>${state.businesses.length ? `<button type="button" class="ghost" id="cancel">Cancel</button>` : ""}</div></form></div>`;
+  const cancel = $("#cancel"); if (cancel) cancel.onclick = () => renderDashboard();
   $("#f").onsubmit = async (e) => {
     e.preventDefault();
-    const { error } = await sb.from("businesses").insert({ name: $("#n").value.trim(), google_review_url: $("#u").value.trim() });
+    const { data, error } = await sb.from("businesses").insert({ name: $("#n").value.trim(), google_review_url: $("#u").value.trim() }).select().single();
     if (error) return flash(app, error.message);
-    route();
+    state.businesses.push(data); state.bizId = data.id; localStorage.setItem(CUR_BIZ_KEY, data.id);
+    await loadBizData(); renderDashboard();
   };
 }
 
 /* ---------- dashboard ---------- */
 function renderDashboard() {
   renderTop();
-  app.innerHTML = `<h2>${esc(state.biz.name)}</h2>
+  const b = currentBiz();
+  if (!b) return renderSetup();
+  app.innerHTML = `<h2>${esc(b.name)}</h2>
     <div class="tabs"><button data-t="customers">Customers</button><button data-t="activity">Activity</button><button data-t="settings">Settings</button></div>
     <div id="pane"></div>`;
-  document.querySelectorAll(".tabs button").forEach(b => {
-    b.classList.toggle("on", b.dataset.t === state.tab);
-    b.onclick = () => { state.tab = b.dataset.t; renderDashboard(); };
+  document.querySelectorAll(".tabs button").forEach(btn => {
+    btn.classList.toggle("on", btn.dataset.t === state.tab);
+    btn.onclick = () => { state.tab = btn.dataset.t; renderDashboard(); };
   });
   ({ customers: paneCustomers, activity: paneActivity, settings: paneSettings })[state.tab]();
 }
 
 function paneCustomers() {
-  const p = $("#pane");
+  const p = $("#pane"), b = currentBiz();
   p.innerHTML = `<div class="card"><h3>Add a customer</h3>
     <form id="add"><label>Name</label><input id="cn" required>
     <div class="row"><div><label>Phone</label><input id="cp" type="tel" placeholder="+13055551234"></div>
@@ -207,20 +232,20 @@ function paneCustomers() {
     e.preventDefault();
     const phone = $("#cp").value.trim() || null, email = $("#ce").value.trim() || null;
     if (!phone && !email) return flash(p, "Add a phone number or an email.");
-    const { error } = await sb.from("customers").insert({ business_id: state.biz.id, name: $("#cn").value.trim(), phone, email });
+    const { error } = await sb.from("customers").insert({ business_id: b.id, name: $("#cn").value.trim(), phone, email });
     if (error) return flash(p, error.message);
-    await loadAll(); renderDashboard();
+    await loadBizData(); renderDashboard();
   };
   const send = async (channel) => {
     const ids = [...document.querySelectorAll("#list input:checked")].map(i => i.value);
     if (!ids.length) return flash(p, "Select at least one customer.");
-    document.querySelectorAll("#pane button").forEach(b => b.disabled = true);
+    document.querySelectorAll("#pane button").forEach(btn => btn.disabled = true);
     const { data, error } = await sb.functions.invoke("send-review-request", { body: { customer_ids: ids, channel } });
-    document.querySelectorAll("#pane button").forEach(b => b.disabled = false);
+    document.querySelectorAll("#pane button").forEach(btn => btn.disabled = false);
     if (error || data?.error) return flash(p, data?.error || error.message);
     const sent = data.results.filter(r => r.status === "sent").length;
     const failed = data.results.filter(r => r.status === "failed");
-    await loadAll();
+    await loadBizData();
     if (failed.length) flash(p, `${sent} sent, ${failed.length} failed: ${failed[0].error}`);
     else flash(p, `${sent} review request${sent === 1 ? "" : "s"} sent.`, "ok");
   };
@@ -238,18 +263,26 @@ function paneActivity() {
 }
 
 function paneSettings() {
-  const b = state.biz;
+  const b = currentBiz();
   $("#pane").innerHTML = `<div class="card"><h3>Business details</h3><form id="f">
     <label>Business name</label><input id="n" value="${esc(b.name)}" required>
     <label>Google review link</label><input id="u" type="url" value="${esc(b.google_review_url)}" required>
     <label>Notify this email about low ratings</label><input id="ne" type="email" value="${esc(b.notify_email || "")}" placeholder="owner@yourbusiness.com">
     <p class="mute" style="font-size:.85rem;margin:.2rem 0 0">Leave blank to use your sign-in email instead.</p>
+    <label>Postproxy profile ID (for Google auto-reply)</label><input id="pp" value="${esc(b.postproxy_profile_id || "")}" placeholder="e.g. 1jUKQD">
+    <p class="mute" style="font-size:.85rem;margin:.2rem 0 0">Found in Postproxy → Profiles, next to this business's connected Google Business listing.</p>
     <p class="mute" style="font-size:.85rem">Your customer link: <br><code>${esc(location.origin + location.pathname)}#/r/${esc(b.slug)}</code>
     <br>Your intake link (QR code): <br><code>${esc(location.origin)}/add.html#/add/${esc(b.slug)}</code></p>
-    <div style="margin-top:1rem" class="row"><button>Save changes</button></div></form></div>`;
+    <div style="margin-top:1rem" class="row"><button>Save changes</button></div></form>
+    <hr style="border-color:var(--line);margin:1.25rem 0">
+    <button type="button" class="ghost" id="addbiz">+ Add another business</button></div>`;
+  $("#addbiz").onclick = () => renderSetup();
   $("#f").onsubmit = async (e) => {
     e.preventDefault();
-    const { error } = await sb.from("businesses").update({ name: $("#n").value.trim(), google_review_url: $("#u").value.trim(), notify_email: $("#ne").value.trim() || null }).eq("id", b.id);
+    const { error } = await sb.from("businesses").update({
+      name: $("#n").value.trim(), google_review_url: $("#u").value.trim(),
+      notify_email: $("#ne").value.trim() || null, postproxy_profile_id: $("#pp").value.trim() || null,
+    }).eq("id", b.id);
     if (error) return flash($("#pane"), error.message);
     await loadAll(); flash($("#pane"), "Saved.", "ok");
   };

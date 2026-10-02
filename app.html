@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,9 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-:root{--bg:#f7fafb;--ink:#10202b;--mute:#5d6b76;--line:#dbe4e9;--card:#fff;--brand:#0e7c86;--brand-d:#0a5f67;--pink:#e8457c;--ok:#1a7f4b;--err:#c0392b}
+:root{--bg:#06110e;--ink:#f3f6f4;--mute:#8ea39b;--line:#1d2f29;--card:#0e1c18;--brand:#22c55e;--brand-d:#16a34a;--pink:#22c55e;--ok:#7fe3a4;--err:#f87171}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -10%, #0d2219 0%, var(--bg) 55%);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif}
 h1,h2,h3{font-family:"Bricolage Grotesque",Inter,sans-serif;margin:0 0 .5rem}
 main{max-width:640px;margin:0 auto;padding:1rem 1rem 4rem}
 header.top{display:flex;justify-content:space-between;align-items:center;padding:1rem;max-width:640px;margin:0 auto}
@@ -19,29 +18,33 @@ header.top{display:flex;justify-content:space-between;align-items:center;padding
 .logo i{color:var(--pink);font-style:normal}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem;margin-bottom:1rem}
 label{display:block;font-weight:500;margin:.75rem 0 .25rem}
-input,textarea,select{width:100%;padding:.7rem .8rem;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
+input,textarea,select{width:100%;padding:.7rem .8rem;border:1px solid var(--line);border-radius:8px;font:inherit;background:#0a1512;color:var(--ink)}
 input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
-button{font:500 1rem Inter;padding:.7rem 1rem;border-radius:8px;border:0;background:var(--brand);color:#fff;cursor:pointer}
+button{font:500 1rem Inter;padding:.7rem 1rem;border-radius:8px;border:0;background:var(--brand);color:#06150f;font-weight:600;cursor:pointer}
 button:hover{background:var(--brand-d)}
-button.ghost{background:transparent;color:var(--brand);border:1px solid var(--line)}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
 button.pink{background:var(--pink)}
 button:disabled{opacity:.5;cursor:default}
 .row{display:flex;gap:.5rem;flex-wrap:wrap}.row>*{flex:1}
 .tabs{display:flex;gap:.25rem;margin-bottom:1rem}
 .tabs button{flex:1;background:transparent;color:var(--mute);border:1px solid var(--line)}
-.tabs button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.tabs button.on{background:var(--brand);color:#06150f;border-color:var(--brand)}
 .cust{display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-top:1px solid var(--line)}
 .cust:first-child{border-top:0}
 .cust input{width:auto}
 .cust div{flex:1;min-width:0}
 .cust small{color:var(--mute);display:block;overflow:hidden;text-overflow:ellipsis}
 .msg{padding:.6rem .8rem;border-radius:8px;margin:.75rem 0;font-size:.95rem}
-.msg.err{background:#fdecea;color:var(--err)}.msg.ok{background:#e7f5ee;color:var(--ok)}
-.pill{font-size:.8rem;padding:.1rem .5rem;border-radius:99px;background:#eef3f5;color:var(--mute)}
-.pill.sent,.pill.clicked{background:#e7f5ee;color:var(--ok)}.pill.failed{background:#fdecea;color:var(--err)}
+.msg.err{background:rgba(248,113,113,.12);color:var(--err)}.msg.ok{background:rgba(127,227,164,.12);color:var(--ok)}
+.pill{font-size:.8rem;padding:.1rem .5rem;border-radius:99px;background:#15241f;color:var(--mute)}
+.pill.sent,.pill.clicked{background:rgba(127,227,164,.12);color:var(--ok)}.pill.failed{background:rgba(248,113,113,.12);color:var(--err)}
 .mute{color:var(--mute)}
 .center{text-align:center;padding-top:3rem}
-.big{display:inline-block;margin-top:1rem;padding:1rem 1.5rem;font-size:1.1rem;background:var(--pink);color:#fff;border-radius:10px;text-decoration:none}
+.big{display:inline-block;margin-top:1rem;padding:1rem 1.5rem;font-size:1.1rem;background:var(--pink);color:#06150f;font-weight:600;border-radius:10px;text-decoration:none}
+.stars{font-size:2.8rem;letter-spacing:.25rem;margin:1rem 0}
+.stars button{background:none;border:0;padding:0 .1rem;font-size:inherit;color:#2a3a35;cursor:pointer}
+.stars button.on,.stars button:hover,.stars button:hover~button{color:#f5b301}
+code{color:var(--mute)}
 </style>
 </head>
 <body>
@@ -83,16 +86,44 @@ function renderTop() {
   const o = $("#out"); if (o) o.onclick = async () => { await sb.auth.signOut(); state = { user:null,biz:null,customers:[],requests:[],tab:"customers" }; route(); };
 }
 
-/* ---------- public review landing (what customers see) ---------- */
+/* ---------- public review landing: rate first, then route ---------- */
 async function renderLanding(slug, token) {
   $("#top").innerHTML = `<span class="logo">xen<i>.</i></span>`;
-  const { data, error } = await sb.rpc("get_review_target", { p_slug: slug, p_token: token });
-  const b = data && data[0];
-  if (error || !b) { app.innerHTML = `<div class="center"><h2>Link not found</h2><p class="mute">This review link is no longer valid.</p></div>`; return; }
-  if (!b.google_review_url) { app.innerHTML = `<div class="center"><h2>${esc(b.name)}</h2><p class="mute">Thanks for visiting! Their review page isn't set up yet.</p></div>`; return; }
-  app.innerHTML = `<div class="center"><h1>How was ${esc(b.name)}?</h1>
-    <p class="mute">Your review helps other people in the neighborhood find them.</p>
-    <a class="big" href="${esc(b.google_review_url)}" rel="noopener">Leave a Google review</a></div>`;
+  if (!token) { app.innerHTML = `<div class="center"><h2>Link not found</h2><p class="mute">This review link is missing its token.</p></div>`; return; }
+  let rating = 0;
+  app.innerHTML = `<div class="center">
+    <h1 id="rtitle">How was your visit?</h1>
+    <div class="stars" id="stars">${[1,2,3,4,5].map(n => `<button data-n="${n}">★</button>`).join("")}</div>
+    <p class="mute" id="rsub">Tap a star to rate your experience.</p>
+  </div>`;
+  $("#stars").querySelectorAll("button").forEach(btn => {
+    btn.onclick = async () => {
+      rating = Number(btn.dataset.n);
+      $("#stars").querySelectorAll("button").forEach(b => b.classList.toggle("on", Number(b.dataset.n) <= rating));
+      $("#rsub").textContent = "Submitting…";
+      const { data, error } = await sb.rpc("public_rate_visit", { p_slug: slug, p_token: token, p_rating: rating });
+      const row = data && data[0];
+      if (error || !row || !row.business_name) { app.innerHTML = `<div class="center"><h2>Link not found</h2><p class="mute">This review link is no longer valid.</p></div>`; return; }
+      if (row.needs_feedback) return renderFeedbackForm(row.business_name, token);
+      if (!row.google_review_url) { app.innerHTML = `<div class="center"><h2>Thanks!</h2><p class="mute">${esc(row.business_name)} hasn't set up their review page yet.</p></div>`; return; }
+      app.innerHTML = `<div class="center"><h2>Thank you!</h2><p class="mute">Taking you to leave a review for ${esc(row.business_name)}…</p></div>`;
+      setTimeout(() => location.href = row.google_review_url, 700);
+    };
+  });
+}
+
+function renderFeedbackForm(bizName, token) {
+  app.innerHTML = `<div class="card"><h2>We're glad you told us</h2>
+    <p class="mute">This stays private with ${esc(bizName)} — it won't be posted anywhere public.</p>
+    <form id="f"><label>What happened? (optional)</label><textarea id="c" rows="4" placeholder="Tell us what went wrong…"></textarea>
+    <div style="margin-top:1rem" class="row"><button>Send privately</button></div></form></div>`;
+  $("#f").onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector("button"); btn.disabled = true;
+    const { error } = await sb.rpc("public_add_feedback", { p_token: token, p_comment: $("#c").value.trim() });
+    if (error) { btn.disabled = false; return flash(app, error.message); }
+    app.innerHTML = `<div class="center"><h2>Thank you</h2><p class="mute">${esc(bizName)} has been notified and will follow up if needed.</p></div>`;
+  };
 }
 
 /* ---------- auth ---------- */
@@ -200,9 +231,9 @@ function paneActivity() {
   const sent = state.requests.filter(r => r.status === "sent" || r.status === "clicked").length;
   const clicked = state.requests.filter(r => r.status === "clicked").length;
   $("#pane").innerHTML = `<div class="card"><h3>Last 50 requests</h3>
-    <p class="mute">${sent} sent · ${clicked} opened the review page</p>
+    <p class="mute">${sent} sent · ${clicked} rated</p>
     ${state.requests.length ? state.requests.map(r => `<div class="cust"><div>${esc(r.customers?.name || "Customer")}
-      <small>${r.channel === "sms" ? "Text" : "Email"} · ${new Date(r.created_at).toLocaleString()}</small></div>
+      <small>${r.channel === "sms" ? "Text" : "Email"} · ${new Date(r.created_at).toLocaleString()}${r.rating ? " · " + "★".repeat(r.rating) : ""}</small></div>
       <span class="pill ${r.status}">${r.status}</span></div>`).join("") : `<p class="mute">Nothing sent yet.</p>`}</div>`;
 }
 
@@ -211,11 +242,14 @@ function paneSettings() {
   $("#pane").innerHTML = `<div class="card"><h3>Business details</h3><form id="f">
     <label>Business name</label><input id="n" value="${esc(b.name)}" required>
     <label>Google review link</label><input id="u" type="url" value="${esc(b.google_review_url)}" required>
-    <p class="mute" style="font-size:.85rem">Your customer link: <br><code>${esc(location.origin + location.pathname)}#/r/${esc(b.slug)}</code></p>
+    <label>Notify this email about low ratings</label><input id="ne" type="email" value="${esc(b.notify_email || "")}" placeholder="owner@yourbusiness.com">
+    <p class="mute" style="font-size:.85rem;margin:.2rem 0 0">Leave blank to use your sign-in email instead.</p>
+    <p class="mute" style="font-size:.85rem">Your customer link: <br><code>${esc(location.origin + location.pathname)}#/r/${esc(b.slug)}</code>
+    <br>Your intake link (QR code): <br><code>${esc(location.origin)}/add.html#/add/${esc(b.slug)}</code></p>
     <div style="margin-top:1rem" class="row"><button>Save changes</button></div></form></div>`;
   $("#f").onsubmit = async (e) => {
     e.preventDefault();
-    const { error } = await sb.from("businesses").update({ name: $("#n").value.trim(), google_review_url: $("#u").value.trim() }).eq("id", b.id);
+    const { error } = await sb.from("businesses").update({ name: $("#n").value.trim(), google_review_url: $("#u").value.trim(), notify_email: $("#ne").value.trim() || null }).eq("id", b.id);
     if (error) return flash($("#pane"), error.message);
     await loadAll(); flash($("#pane"), "Saved.", "ok");
   };
@@ -224,4 +258,4 @@ function paneSettings() {
 route();
 </script>
 </body>
-  </html>
+</html>

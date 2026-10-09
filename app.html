@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
 :root{--bg:#06110e;--ink:#f3f6f4;--mute:#8ea39b;--line:#1d2f29;--card:#0e1c18;--brand:#22c55e;--brand-d:#16a34a;--pink:#22c55e;--ok:#7fe3a4;--err:#f87171}
 *{box-sizing:border-box}
@@ -17,36 +18,58 @@ header.top{display:flex;justify-content:space-between;align-items:center;gap:.5r
 .logo{font:700 1.5rem "Bricolage Grotesque";color:var(--brand)}
 .logo i{color:var(--pink);font-style:normal}
 .topright{display:flex;align-items:center;gap:.5rem}
-select.switcher{width:auto;padding:.5rem .7rem;font-size:.9rem;background:#0a1512;color:var(--ink);border:1px solid var(--line);border-radius:8px}
+select.switcher{width:auto;padding:.5rem .7rem;font-size:.9rem}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem;margin-bottom:1rem}
+details.card summary{cursor:pointer;font-weight:600}
 label{display:block;font-weight:500;margin:.75rem 0 .25rem}
 input,textarea,select{width:100%;padding:.7rem .8rem;border:1px solid var(--line);border-radius:8px;font:inherit;background:#0a1512;color:var(--ink)}
 input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
 button{font:500 1rem Inter;padding:.7rem 1rem;border-radius:8px;border:0;background:var(--brand);color:#06150f;font-weight:600;cursor:pointer}
 button:hover{background:var(--brand-d)}
 button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
-button.pink{background:var(--pink)}
+button.small{padding:.45rem .8rem;font-size:.9rem}
 button:disabled{opacity:.5;cursor:default}
 .row{display:flex;gap:.5rem;flex-wrap:wrap}.row>*{flex:1}
 .tabs{display:flex;gap:.25rem;margin-bottom:1rem}
-.tabs button{flex:1;background:transparent;color:var(--mute);border:1px solid var(--line)}
+.tabs button{flex:1;padding:.6rem .2rem;font-size:.88rem;background:transparent;color:var(--mute);border:1px solid var(--line)}
 .tabs button.on{background:var(--brand);color:#06150f;border-color:var(--brand)}
 .cust{display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-top:1px solid var(--line)}
-.cust:first-child{border-top:0}
+.cust:first-of-type{border-top:0}
 .cust input{width:auto}
 .cust div{flex:1;min-width:0}
 .cust small{color:var(--mute);display:block;overflow:hidden;text-overflow:ellipsis}
+.fb{padding:.8rem 0;border-top:1px solid var(--line)}
+.fb:first-of-type{border-top:0}
+.fb .top2{display:flex;justify-content:space-between;gap:.5rem}
+.fb .gold{color:#f5b301;white-space:nowrap}
+.fb a{color:var(--brand)}
 .msg{padding:.6rem .8rem;border-radius:8px;margin:.75rem 0;font-size:.95rem}
 .msg.err{background:rgba(248,113,113,.12);color:var(--err)}.msg.ok{background:rgba(127,227,164,.12);color:var(--ok)}
-.pill{font-size:.8rem;padding:.1rem .5rem;border-radius:99px;background:#15241f;color:var(--mute)}
+.pill{font-size:.8rem;padding:.1rem .5rem;border-radius:99px;background:#15241f;color:var(--mute);white-space:nowrap}
 .pill.sent,.pill.clicked{background:rgba(127,227,164,.12);color:var(--ok)}.pill.failed{background:rgba(248,113,113,.12);color:var(--err)}
 .mute{color:var(--mute)}
-.center{text-align:center;padding-top:3rem}
-.big{display:inline-block;margin-top:1rem;padding:1rem 1.5rem;font-size:1.1rem;background:var(--pink);color:#06150f;font-weight:600;border-radius:10px;text-decoration:none}
+.center{text-align:center;padding-top:2rem}
 .stars{font-size:2.8rem;letter-spacing:.25rem;margin:1rem 0}
 .stars button{background:none;border:0;padding:0 .1rem;font-size:inherit;color:#2a3a35;cursor:pointer}
-.stars button.on,.stars button:hover,.stars button:hover~button{color:#f5b301}
-code{color:var(--mute)}
+.stars button.on{color:#f5b301}
+.lang{display:flex;gap:.4rem;justify-content:center;margin-bottom:1rem}
+.lang button{background:transparent;color:var(--mute);border:1px solid var(--line);padding:.3rem .8rem;font-size:.85rem}
+.lang button.on{background:var(--brand);color:#06150f;border-color:var(--brand)}
+code{color:var(--mute);word-break:break-all}
+#cardview{position:fixed;inset:0;background:#fff;color:#111;z-index:100;overflow:auto;padding:1.5rem}
+#cardview .printcard{max-width:420px;margin:0 auto;text-align:center}
+#cardview h1{font-size:1.8rem;margin:0 0 .3rem;color:#111}
+#cardview h2{font-size:1.15rem;margin:.1rem 0;color:#111;font-weight:600}
+#cardview h2.es{color:#444;font-weight:500}
+#cardview img{width:100%;max-width:340px;margin:1rem auto;display:block}
+#cardview .url{font-size:.7rem;color:#666;word-break:break-all}
+#cardview button.ghost{color:#111;border-color:#bbb}
+@media print{
+  body > *:not(#cardview){display:none !important}
+  #cardview{position:static;padding:0}
+  #cardview .noprint{display:none !important}
+  body{background:#fff !important}
+}
 </style>
 </head>
 <body>
@@ -61,8 +84,13 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = (s) => document.querySelector(s);
 const app = $("#app");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (_e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (_e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (_e) {} },
+};
 const CUR_BIZ_KEY = "xen_current_biz";
-let state = { user: null, businesses: [], bizId: null, customers: [], requests: [], tab: "customers" };
+let state = { user: null, businesses: [], bizId: null, customers: [], requests: [], feedback: [], tab: "customers", recovering: false };
 
 function flash(el, text, kind = "err") {
   const box = document.createElement("div");
@@ -71,11 +99,42 @@ function flash(el, text, kind = "err") {
 }
 function currentBiz() { return state.businesses.find(b => b.id === state.bizId) || null; }
 
+/* ---------- English / Spanish for the customer-facing pages ---------- */
+const STR = {
+  en: {
+    howWasVisit: "How was your visit?", tapStar: "Tap a star to rate your experience.", submitting: "Submitting…",
+    linkNotFound: "Link not found", linkInvalid: "This link is no longer valid.", tryLater: "Please try again in a little while.",
+    thanks: "Thank you!", notSetUp: "{name} hasn't set up their review page yet.", redirecting: "Taking you to leave a review for {name}…",
+    gladYouTold: "We're glad you told us", privateNote: "This stays private with {name}. It won't be posted anywhere public.",
+    whatHappened: "What happened? (optional)", tellUs: "Tell us what went wrong…", sendPrivately: "Send privately",
+    thankYou: "Thank you", notified: "{name} has been notified and will follow up if needed.",
+  },
+  es: {
+    howWasVisit: "¿Cómo fue tu visita?", tapStar: "Toca una estrella para calificar tu experiencia.", submitting: "Enviando…",
+    linkNotFound: "Enlace no encontrado", linkInvalid: "Este enlace ya no es válido.", tryLater: "Inténtalo de nuevo en un momento.",
+    thanks: "¡Gracias!", notSetUp: "{name} aún no ha configurado su página de reseñas.", redirecting: "Te llevamos a dejar una reseña para {name}…",
+    gladYouTold: "Gracias por decírnoslo", privateNote: "Esto queda en privado con {name}. No se publicará en ningún sitio.",
+    whatHappened: "¿Qué pasó? (opcional)", tellUs: "Cuéntanos qué salió mal…", sendPrivately: "Enviar en privado",
+    thankYou: "Gracias", notified: "{name} fue notificado y te contactará si es necesario.",
+  },
+};
+let lang = store.get("xen_lang") || ((navigator.language || "en").toLowerCase().startsWith("es") ? "es" : "en");
+const t = (k, v = {}) => (STR[lang][k] || STR.en[k] || k).replace(/\{(\w+)\}/g, (_m, n) => v[n] ?? "");
+function langBar() {
+  return `<div class="lang"><button data-l="en" class="${lang === "en" ? "on" : ""}">English</button><button data-l="es" class="${lang === "es" ? "on" : ""}">Español</button></div>`;
+}
+function bindLang(rerender) {
+  document.querySelectorAll(".lang button").forEach(b => b.onclick = () => { lang = b.dataset.l; store.set("xen_lang", lang); rerender(); });
+}
+
 /* ---------- routing ---------- */
 async function route() {
   const h = location.hash || "";
+  const mRate = h.match(/^#\/rate\/([^?]+)/i);
+  if (mRate) return renderRate(decodeURIComponent(mRate[1]), null, true);
   const m = h.match(/^#\/r\/([^?]+)(?:\?t=([0-9a-f-]{36}))?/i);
-  if (m) return renderLanding(decodeURIComponent(m[1]), m[2] || null);
+  if (m) return m[2] ? renderRate(decodeURIComponent(m[1]), m[2], false) : renderNotFound();
+  if (state.recovering) return renderNewPassword();
   const { data: { session } } = await sb.auth.getSession();
   state.user = session?.user ?? null;
   if (!state.user) return renderAuth();
@@ -92,52 +151,80 @@ function renderTop() {
     </select>` : "";
   $("#top").innerHTML = `<span class="logo">xen<i>.</i></span>` +
     (state.user ? `<div class="topright">${switcher}<button class="ghost" id="out">Sign out</button></div>` : "");
-  const o = $("#out"); if (o) o.onclick = async () => { await sb.auth.signOut(); state = { user:null,businesses:[],bizId:null,customers:[],requests:[],tab:"customers" }; localStorage.removeItem(CUR_BIZ_KEY); route(); };
+  const o = $("#out"); if (o) o.onclick = async () => {
+    await sb.auth.signOut();
+    state = { user: null, businesses: [], bizId: null, customers: [], requests: [], feedback: [], tab: "customers", recovering: false };
+    store.del(CUR_BIZ_KEY); route();
+  };
   const sw = $("#bizsw"); if (sw) sw.onchange = () => {
     if (sw.value === "__new__") { renderSetup(); return; }
-    state.bizId = sw.value; localStorage.setItem(CUR_BIZ_KEY, state.bizId);
+    state.bizId = sw.value; store.set(CUR_BIZ_KEY, state.bizId);
     loadBizData().then(renderDashboard);
   };
 }
 
-/* ---------- public review landing: rate first, then route ---------- */
-async function renderLanding(slug, token) {
+/* ---------- customer-facing: rate first, then route ---------- */
+function renderNotFound(msgKey = "linkInvalid") {
   $("#top").innerHTML = `<span class="logo">xen<i>.</i></span>`;
-  if (!token) { app.innerHTML = `<div class="center"><h2>Link not found</h2><p class="mute">This review link is missing its token.</p></div>`; return; }
-  let rating = 0;
-  app.innerHTML = `<div class="center">
-    <h1 id="rtitle">How was your visit?</h1>
-    <div class="stars" id="stars">${[1,2,3,4,5].map(n => `<button data-n="${n}">★</button>`).join("")}</div>
-    <p class="mute" id="rsub">Tap a star to rate your experience.</p>
-  </div>`;
-  $("#stars").querySelectorAll("button").forEach(btn => {
-    btn.onclick = async () => {
-      rating = Number(btn.dataset.n);
-      $("#stars").querySelectorAll("button").forEach(b => b.classList.toggle("on", Number(b.dataset.n) <= rating));
-      $("#rsub").textContent = "Submitting…";
-      const { data, error } = await sb.rpc("public_rate_visit", { p_slug: slug, p_token: token, p_rating: rating });
-      const row = data && data[0];
-      if (error || !row || !row.business_name) { app.innerHTML = `<div class="center"><h2>Link not found</h2><p class="mute">This review link is no longer valid.</p></div>`; return; }
-      if (row.needs_feedback) return renderFeedbackForm(row.business_name, token);
-      if (!row.google_review_url) { app.innerHTML = `<div class="center"><h2>Thanks!</h2><p class="mute">${esc(row.business_name)} hasn't set up their review page yet.</p></div>`; return; }
-      app.innerHTML = `<div class="center"><h2>Thank you!</h2><p class="mute">Taking you to leave a review for ${esc(row.business_name)}…</p></div>`;
-      setTimeout(() => location.href = row.google_review_url, 700);
-    };
-  });
+  app.innerHTML = `<div class="center">${langBar()}<h2>${t("linkNotFound")}</h2><p class="mute">${t(msgKey)}</p></div>`;
+  bindLang(() => renderNotFound(msgKey));
+}
+
+// token = a request sent to one customer; walkin = the counter QR (anyone can scan and rate)
+function renderRate(slug, token, walkin) {
+  $("#top").innerHTML = `<span class="logo">xen<i>.</i></span>`;
+  let busy = false;
+  const draw = () => {
+    app.innerHTML = `<div class="center">${langBar()}
+      <h1>${t("howWasVisit")}</h1>
+      <div class="stars" id="stars">${[1, 2, 3, 4, 5].map(n => `<button data-n="${n}" aria-label="${n}">★</button>`).join("")}</div>
+      <p class="mute" id="rsub">${t("tapStar")}</p></div>`;
+    bindLang(draw);
+    $("#stars").querySelectorAll("button").forEach(btn => {
+      btn.onclick = async () => {
+        if (busy) return; busy = true;
+        const rating = Number(btn.dataset.n);
+        $("#stars").querySelectorAll("button").forEach(b => b.classList.toggle("on", Number(b.dataset.n) <= rating));
+        $("#rsub").textContent = t("submitting");
+        const { data, error } = walkin
+          ? await sb.rpc("public_rate_walkin", { p_slug: slug, p_rating: rating })
+          : await sb.rpc("public_rate_visit", { p_slug: slug, p_token: token, p_rating: rating });
+        const row = data && data[0];
+        if (error || !row || !row.business_name) { busy = false; return renderNotFound(); }
+        const useToken = walkin ? row.token : token;
+        if (!useToken) { busy = false; return renderNotFound("tryLater"); }
+        if (row.needs_feedback) return renderFeedbackForm(row.business_name, useToken);
+        if (!row.google_review_url) {
+          app.innerHTML = `<div class="center"><h2>${t("thanks")}</h2><p class="mute">${t("notSetUp", { name: esc(row.business_name) })}</p></div>`;
+          return;
+        }
+        app.innerHTML = `<div class="center"><h2>${t("thanks")}</h2><p class="mute">${t("redirecting", { name: esc(row.business_name) })}</p></div>`;
+        setTimeout(() => { location.href = row.google_review_url; }, 700);
+      };
+    });
+  };
+  draw();
 }
 
 function renderFeedbackForm(bizName, token) {
-  app.innerHTML = `<div class="card"><h2>We're glad you told us</h2>
-    <p class="mute">This stays private with ${esc(bizName)} — it won't be posted anywhere public.</p>
-    <form id="f"><label>What happened? (optional)</label><textarea id="c" rows="4" placeholder="Tell us what went wrong…"></textarea>
-    <div style="margin-top:1rem" class="row"><button>Send privately</button></div></form></div>`;
-  $("#f").onsubmit = async (e) => {
-    e.preventDefault();
-    const btn = e.target.querySelector("button"); btn.disabled = true;
-    const { error } = await sb.rpc("public_add_feedback", { p_token: token, p_comment: $("#c").value.trim() });
-    if (error) { btn.disabled = false; return flash(app, error.message); }
-    app.innerHTML = `<div class="center"><h2>Thank you</h2><p class="mute">${esc(bizName)} has been notified and will follow up if needed.</p></div>`;
+  let typed = "";
+  const draw = () => {
+    app.innerHTML = `<div class="card">${langBar()}<h2>${t("gladYouTold")}</h2>
+      <p class="mute">${t("privateNote", { name: esc(bizName) })}</p>
+      <form id="f"><label>${t("whatHappened")}</label><textarea id="c" rows="4" placeholder="${t("tellUs")}"></textarea>
+      <div style="margin-top:1rem" class="row"><button>${t("sendPrivately")}</button></div></form></div>`;
+    $("#c").value = typed;
+    $("#c").oninput = () => { typed = $("#c").value; };
+    bindLang(draw);
+    $("#f").onsubmit = async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector("button"); btn.disabled = true;
+      const { error } = await sb.rpc("public_add_feedback", { p_token: token, p_comment: typed.trim() });
+      if (error) { btn.disabled = false; return flash(app, error.message); }
+      app.innerHTML = `<div class="center"><h2>${t("thankYou")}</h2><p class="mute">${t("notified", { name: esc(bizName) })}</p></div>`;
+    };
   };
+  draw();
 }
 
 /* ---------- auth ---------- */
@@ -147,8 +234,10 @@ function renderAuth(mode = "in") {
     <form id="f"><label>Email</label><input id="em" type="email" required autocomplete="email">
     <label>Password</label><input id="pw" type="password" minlength="6" required autocomplete="${mode === "in" ? "current-password" : "new-password"}">
     <div style="margin-top:1rem" class="row"><button>${mode === "in" ? "Sign in" : "Sign up"}</button></div></form>
+    ${mode === "in" ? '<p class="mute" style="margin:1rem 0 .5rem"><a href="#" id="fp">Forgot password?</a></p>' : ""}
     <p class="mute" style="margin-bottom:0">${mode === "in" ? "New here?" : "Have an account?"} <a href="#" id="sw">${mode === "in" ? "Create an account" : "Sign in"}</a></p></div>`;
   $("#sw").onclick = (e) => { e.preventDefault(); renderAuth(mode === "in" ? "up" : "in"); };
+  const fp = $("#fp"); if (fp) fp.onclick = (e) => { e.preventDefault(); renderForgot(); };
   $("#f").onsubmit = async (e) => {
     e.preventDefault();
     const email = $("#em").value.trim(), password = $("#pw").value;
@@ -163,23 +252,60 @@ function renderAuth(mode = "in") {
   };
 }
 
+/* ---------- forgot / reset password ---------- */
+function renderForgot() {
+  renderTop();
+  app.innerHTML = `<div class="card"><h2>Reset your password</h2>
+    <p class="mute">Enter your email and we'll send you a link to choose a new password.</p>
+    <form id="f"><label>Email</label><input id="em" type="email" required autocomplete="email">
+    <div style="margin-top:1rem" class="row"><button>Send reset link</button></div></form>
+    <p class="mute" style="margin-bottom:0"><a href="#" id="back">Back to sign in</a></p></div>`;
+  $("#back").onclick = (e) => { e.preventDefault(); renderAuth(); };
+  $("#f").onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector("button"); btn.disabled = true;
+    const { error } = await sb.auth.resetPasswordForEmail($("#em").value.trim(), { redirectTo: location.origin + location.pathname });
+    btn.disabled = false;
+    if (error) return flash(app, error.message);
+    flash(app, "If that email has an account, a reset link is on its way. Check your spam folder too.", "ok");
+  };
+}
+
+function renderNewPassword() {
+  renderTop();
+  app.innerHTML = `<div class="card"><h2>Choose a new password</h2>
+    <form id="f"><label>New password</label><input id="p1" type="password" minlength="8" required autocomplete="new-password">
+    <label>Confirm password</label><input id="p2" type="password" minlength="8" required autocomplete="new-password">
+    <div style="margin-top:1rem" class="row"><button>Save password</button></div></form></div>`;
+  $("#f").onsubmit = async (e) => {
+    e.preventDefault();
+    if ($("#p1").value !== $("#p2").value) return flash(app, "Those passwords don't match.");
+    const btn = e.target.querySelector("button"); btn.disabled = true;
+    const { error } = await sb.auth.updateUser({ password: $("#p1").value });
+    btn.disabled = false;
+    if (error) return flash(app, error.message);
+    state.recovering = false; route();
+  };
+}
+
 /* ---------- data ---------- */
 async function loadAll() {
   const { data: list } = await sb.from("businesses").select("*").order("created_at");
   state.businesses = list || [];
-  const saved = localStorage.getItem(CUR_BIZ_KEY);
+  const saved = store.get(CUR_BIZ_KEY);
   if (saved && state.businesses.some(b => b.id === saved)) state.bizId = saved;
   else state.bizId = state.businesses[0]?.id || null;
-  if (state.bizId) { localStorage.setItem(CUR_BIZ_KEY, state.bizId); await loadBizData(); }
+  if (state.bizId) { store.set(CUR_BIZ_KEY, state.bizId); await loadBizData(); }
 }
 
 async function loadBizData() {
   if (!state.bizId) return;
-  const [c, r] = await Promise.all([
+  const [c, r, f] = await Promise.all([
     sb.from("customers").select("*").eq("business_id", state.bizId).order("created_at", { ascending: false }),
     sb.from("review_requests").select("*, customers(name)").eq("business_id", state.bizId).order("created_at", { ascending: false }).limit(50),
+    sb.from("review_requests").select("*, customers(name, phone)").eq("business_id", state.bizId).lte("rating", 3).order("created_at", { ascending: false }).limit(100),
   ]);
-  state.customers = c.data || []; state.requests = r.data || [];
+  state.customers = c.data || []; state.requests = r.data || []; state.feedback = f.data || [];
 }
 
 /* ---------- business setup (also used for "add another business") ---------- */
@@ -196,7 +322,7 @@ function renderSetup() {
     e.preventDefault();
     const { data, error } = await sb.from("businesses").insert({ name: $("#n").value.trim(), google_review_url: $("#u").value.trim() }).select().single();
     if (error) return flash(app, error.message);
-    state.businesses.push(data); state.bizId = data.id; localStorage.setItem(CUR_BIZ_KEY, data.id);
+    state.businesses.push(data); state.bizId = data.id; store.set(CUR_BIZ_KEY, data.id);
     await loadBizData(); renderDashboard();
   };
 }
@@ -206,28 +332,61 @@ function renderDashboard() {
   renderTop();
   const b = currentBiz();
   if (!b) return renderSetup();
+  const fbCount = state.feedback.length ? ` (${state.feedback.length})` : "";
   app.innerHTML = `<h2>${esc(b.name)}</h2>
-    <div class="tabs"><button data-t="customers">Customers</button><button data-t="activity">Activity</button><button data-t="settings">Settings</button></div>
+    <div class="tabs"><button data-t="customers">Customers</button><button data-t="feedback">Feedback${fbCount}</button><button data-t="activity">Activity</button><button data-t="settings">Settings</button></div>
     <div id="pane"></div>`;
   document.querySelectorAll(".tabs button").forEach(btn => {
     btn.classList.toggle("on", btn.dataset.t === state.tab);
     btn.onclick = () => { state.tab = btn.dataset.t; renderDashboard(); };
   });
-  ({ customers: paneCustomers, activity: paneActivity, settings: paneSettings })[state.tab]();
+  ({ customers: paneCustomers, feedback: paneFeedback, activity: paneActivity, settings: paneSettings })[state.tab]();
+}
+
+// WhatsApp wants the number with country code and no symbols. Bare 10-digit numbers are treated as US.
+function waNumber(raw) {
+  let d = String(raw || "").replace(/\D/g, "");
+  if (d.length === 10) d = "1" + d;
+  return d;
+}
+
+// One tap: records the request, then opens the owner's own WhatsApp with the message ready to send.
+async function sendWhatsAppTap(customerId, btn) {
+  const c = state.customers.find(x => x.id === customerId), b = currentBiz();
+  if (!c || !c.phone) return;
+  const w = window.open("", "_blank"); // opened inside the tap so phone browsers don't block it
+  btn.disabled = true;
+  const { data, error } = await sb.from("review_requests")
+    .insert({ business_id: b.id, customer_id: c.id, channel: "whatsapp", status: "sent", source: "manual", sent_at: new Date().toISOString() })
+    .select("request_token").single();
+  btn.disabled = false;
+  if (error || !data) { if (w) w.close(); return flash($("#pane"), error?.message || "Could not create the request."); }
+  const link = location.origin + location.pathname + "#/r/" + b.slug + "?t=" + data.request_token;
+  const msg = `Thanks for visiting ${b.name}! How was your visit? / ¡Gracias por visitar ${b.name}! ¿Cómo fue tu visita?\n${link}`;
+  const url = "https://wa.me/" + waNumber(c.phone) + "?text=" + encodeURIComponent(msg);
+  if (w) w.location.href = url; else location.href = url;
+  loadBizData();
 }
 
 function paneCustomers() {
   const p = $("#pane"), b = currentBiz();
   p.innerHTML = `<div class="card"><h3>Add a customer</h3>
     <form id="add"><label>Name</label><input id="cn" required>
-    <div class="row"><div><label>Phone</label><input id="cp" type="tel" placeholder="+13055551234"></div>
+    <div class="row"><div><label>Phone / WhatsApp</label><input id="cp" type="tel" placeholder="+13055551234"></div>
     <div><label>Email</label><input id="ce" type="email"></div></div>
     <div style="margin-top:1rem" class="row"><button>Add customer</button></div></form></div>
-    <div class="card"><h3>Send review requests</h3>
+    <div class="card"><h3>Ask for a review</h3>
+    <p class="mute" style="font-size:.9rem;margin-top:0">Tap WhatsApp to open a ready-to-send message in your own WhatsApp. You just press send.</p>
+    ${state.customers.length ? state.customers.map(c => `
+      <div class="cust"><div>${esc(c.name)}<small>${esc([c.phone, c.email].filter(Boolean).join(" · "))}</small></div>
+      ${c.phone ? `<button class="small" data-wa="${c.id}">WhatsApp</button>` : `<span class="mute" style="font-size:.8rem">no phone</span>`}</div>`).join("")
+      : `<p class="mute">No customers yet. Add your first one above, or have customers use your check-in QR card.</p>`}</div>
+    <details class="card"><summary>Automatic sending (needs setup)</summary>
+    <p class="mute" style="font-size:.9rem">Sends without you tapping. This only works once a WhatsApp sender, text number or email domain has been set up.</p>
     ${state.customers.length ? `<div id="list">${state.customers.map(c => `
       <label class="cust"><input type="checkbox" value="${c.id}"><div>${esc(c.name)}<small>${esc([c.phone, c.email].filter(Boolean).join(" · "))}</small></div></label>`).join("")}</div>
-      <div class="row" style="margin-top:1rem"><button id="sms" class="pink">Send by text</button><button id="em2">Send by email</button></div>`
-      : `<p class="mute">No customers yet. Add your first one above.</p>`}</div>`;
+      <div class="row" style="margin-top:1rem"><button id="sms" class="ghost">Send by text</button><button id="wa" class="ghost">Send by WhatsApp</button><button id="em2" class="ghost">Send by email</button></div>` : ""}
+    </details>`;
   $("#add").onsubmit = async (e) => {
     e.preventDefault();
     const phone = $("#cp").value.trim() || null, email = $("#ce").value.trim() || null;
@@ -236,6 +395,7 @@ function paneCustomers() {
     if (error) return flash(p, error.message);
     await loadBizData(); renderDashboard();
   };
+  p.querySelectorAll("[data-wa]").forEach(btn => { btn.onclick = () => sendWhatsAppTap(btn.dataset.wa, btn); });
   const send = async (channel) => {
     const ids = [...document.querySelectorAll("#list input:checked")].map(i => i.value);
     if (!ids.length) return flash(p, "Select at least one customer.");
@@ -249,45 +409,93 @@ function paneCustomers() {
     if (failed.length) flash(p, `${sent} sent, ${failed.length} failed: ${failed[0].error}`);
     else flash(p, `${sent} review request${sent === 1 ? "" : "s"} sent.`, "ok");
   };
-  if ($("#sms")) { $("#sms").onclick = () => send("sms"); $("#em2").onclick = () => send("email"); }
+  if ($("#sms")) { $("#sms").onclick = () => send("sms"); $("#wa").onclick = () => send("whatsapp"); $("#em2").onclick = () => send("email"); }
+}
+
+function paneFeedback() {
+  const list = state.feedback;
+  $("#pane").innerHTML = `<div class="card"><h3>Private feedback</h3>
+    <p class="mute" style="font-size:.9rem;margin-top:0">Ratings of 3 stars or less stay here. They are never posted to Google.</p>
+    ${list.length ? list.map(r => {
+      const name = r.customers?.name || "Walk-in customer (QR)";
+      const reply = r.customers?.phone ? `<div><a href="https://wa.me/${waNumber(r.customers.phone)}" target="_blank" rel="noopener">Reply on WhatsApp</a></div>` : "";
+      return `<div class="fb"><div class="top2"><b>${esc(name)}</b><span class="gold">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span></div>
+        <div>${r.comment ? esc(r.comment) : '<i class="mute">No comment left</i>'}</div>
+        <small class="mute">${new Date(r.created_at).toLocaleString()}</small>${reply}</div>`;
+    }).join("") : `<p class="mute">Nothing here yet. That's good news.</p>`}</div>`;
 }
 
 function paneActivity() {
-  const sent = state.requests.filter(r => r.status === "sent" || r.status === "clicked").length;
-  const clicked = state.requests.filter(r => r.status === "clicked").length;
-  $("#pane").innerHTML = `<div class="card"><h3>Last 50 requests</h3>
-    <p class="mute">${sent} sent · ${clicked} rated</p>
-    ${state.requests.length ? state.requests.map(r => `<div class="cust"><div>${esc(r.customers?.name || "Customer")}
-      <small>${r.channel === "sms" ? "Text" : "Email"} · ${new Date(r.created_at).toLocaleString()}${r.rating ? " · " + "★".repeat(r.rating) : ""}</small></div>
-      <span class="pill ${r.status}">${r.status}</span></div>`).join("") : `<p class="mute">Nothing sent yet.</p>`}</div>`;
+  const asked = state.requests.filter(r => r.channel !== "qr" && (r.status === "sent" || r.status === "clicked")).length;
+  const rated = state.requests.filter(r => r.rating).length;
+  $("#pane").innerHTML = `<div class="card"><h3>Last 50</h3>
+    <p class="mute">${asked} asked · ${rated} rated</p>
+    ${state.requests.length ? state.requests.map(r => {
+      const who = r.channel === "qr" ? "Walk-in (QR)" : (r.customers?.name || "Customer");
+      const via = r.channel === "sms" ? "Text" : r.channel === "whatsapp" ? "WhatsApp" : r.channel === "qr" ? "QR scan" : "Email";
+      return `<div class="cust"><div>${esc(who)}<small>${via} · ${new Date(r.created_at).toLocaleString()}</small></div>
+        <span class="pill ${r.status}">${r.rating ? r.rating + "★" : r.status}</span></div>`;
+    }).join("") : `<p class="mute">Nothing yet.</p>`}</div>`;
+}
+
+/* ---------- printable QR cards ---------- */
+async function showCard(kind) {
+  const b = currentBiz();
+  const url = kind === "rate" ? location.origin + location.pathname + "#/rate/" + b.slug : location.origin + "/add.html#/add/" + b.slug;
+  const en = kind === "rate" ? "Scan to rate your visit" : "Scan to get your review link";
+  const es = kind === "rate" ? "Escanea para calificar tu visita" : "Escanea para recibir tu enlace";
+  let src = "";
+  try { if (typeof QRCode !== "undefined") src = await QRCode.toDataURL(url, { width: 640, margin: 1, errorCorrectionLevel: "M" }); } catch (_e) { src = ""; }
+  if (!src) src = "https://api.qrserver.com/v1/create-qr-code/?size=640x640&margin=10&data=" + encodeURIComponent(url);
+  const el = document.createElement("div");
+  el.id = "cardview";
+  el.innerHTML = `<div class="printcard"><h1>${esc(b.name)}</h1><h2>${en}</h2><h2 class="es">${es}</h2>
+    <img src="${src}" alt="QR code"><p class="url">${esc(url)}</p></div>
+    <div class="noprint row" style="max-width:420px;margin:1rem auto"><button id="cv-print">Print / Save as PDF</button><button class="ghost" id="cv-close">Close</button></div>`;
+  document.body.appendChild(el);
+  $("#cv-print").onclick = () => window.print();
+  $("#cv-close").onclick = () => el.remove();
 }
 
 function paneSettings() {
   const b = currentBiz();
-  $("#pane").innerHTML = `<div class="card"><h3>Business details</h3><form id="f">
+  $("#pane").innerHTML = `<div class="card"><h3>QR cards</h3>
+    <p class="mute" style="font-size:.9rem;margin-top:0">Print a card for the counter. Customers scan it, rate their visit, and happy ones go to Google while unhappy ones write to you privately.</p>
+    <div class="row"><button type="button" id="card-rate">Rating card</button><button type="button" class="ghost" id="card-add">Check-in card</button></div>
+    <p class="mute" style="font-size:.85rem;margin-bottom:0">The rating card works right away. The check-in card collects a customer's number so you can message them.</p></div>
+    <div class="card"><h3>Business details</h3><form id="f">
     <label>Business name</label><input id="n" value="${esc(b.name)}" required>
     <label>Google review link</label><input id="u" type="url" value="${esc(b.google_review_url)}" required>
     <label>Notify this email about low ratings</label><input id="ne" type="email" value="${esc(b.notify_email || "")}" placeholder="owner@yourbusiness.com">
-    <p class="mute" style="font-size:.85rem;margin:.2rem 0 0">Leave blank to use your sign-in email instead.</p>
+    <p class="mute" style="font-size:.85rem;margin:.2rem 0 0">Optional. You can always read low ratings in the Feedback tab.</p>
     <label>Postproxy profile ID (for Google auto-reply)</label><input id="pp" value="${esc(b.postproxy_profile_id || "")}" placeholder="e.g. 1jUKQD">
     <p class="mute" style="font-size:.85rem;margin:.2rem 0 0">Found in Postproxy → Profiles, next to this business's connected Google Business listing.</p>
-    <p class="mute" style="font-size:.85rem">Your customer link: <br><code>${esc(location.origin + location.pathname)}#/r/${esc(b.slug)}</code>
-    <br>Your intake link (QR code): <br><code>${esc(location.origin)}/add.html#/add/${esc(b.slug)}</code></p>
+    <details style="margin-top:1rem"><summary>Automatic sending (advanced)</summary>
+    <label>Send automatically after QR check-in</label>
+    <select id="as"><option value="false" ${b.auto_send ? "" : "selected"}>Off (I'll tap send myself)</option><option value="true" ${b.auto_send ? "selected" : ""}>On (needs a WhatsApp sender, text number or email domain)</option></select>
+    <label>Phone-only customers get their request by</label>
+    <select id="pc"><option value="sms" ${b.phone_channel !== "whatsapp" ? "selected" : ""}>Text message (SMS)</option><option value="whatsapp" ${b.phone_channel === "whatsapp" ? "selected" : ""}>WhatsApp</option></select></details>
+    <p class="mute" style="font-size:.85rem;margin-top:1rem">Rating link: <br><code>${esc(location.origin + location.pathname)}#/rate/${esc(b.slug)}</code>
+    <br>Check-in link: <br><code>${esc(location.origin)}/add.html#/add/${esc(b.slug)}</code></p>
     <div style="margin-top:1rem" class="row"><button>Save changes</button></div></form>
     <hr style="border-color:var(--line);margin:1.25rem 0">
     <button type="button" class="ghost" id="addbiz">+ Add another business</button></div>`;
+  $("#card-rate").onclick = () => showCard("rate");
+  $("#card-add").onclick = () => showCard("add");
   $("#addbiz").onclick = () => renderSetup();
   $("#f").onsubmit = async (e) => {
     e.preventDefault();
     const { error } = await sb.from("businesses").update({
       name: $("#n").value.trim(), google_review_url: $("#u").value.trim(),
       notify_email: $("#ne").value.trim() || null, postproxy_profile_id: $("#pp").value.trim() || null,
+      auto_send: $("#as").value === "true", phone_channel: $("#pc").value,
     }).eq("id", b.id);
     if (error) return flash($("#pane"), error.message);
     await loadAll(); flash($("#pane"), "Saved.", "ok");
   };
 }
 
+sb.auth.onAuthStateChange((event) => { if (event === "PASSWORD_RECOVERY") { state.recovering = true; renderNewPassword(); } });
 route();
 </script>
 </body>

@@ -3,50 +3,143 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Xen – Send WhatsApp review request</title>
+<title>Xen – Send review request</title>
 <style>
 body{margin:0;font:16px/1.5 system-ui,sans-serif;background:#06110e;color:#f3f6f4}
 main{max-width:480px;margin:0 auto;padding:1.25rem}
-h1{font-size:1.5rem;margin:.5rem 0 1rem}
-label{display:block;margin:.9rem 0 .3rem;color:#8ea39b;font-size:.9rem}
-input{width:100%;padding:.7rem;border-radius:8px;border:1px solid #1d2f29;background:#0e1c18;color:#f3f6f4;font:inherit;box-sizing:border-box}
-button{width:100%;margin-top:1.2rem;padding:.9rem;border:0;border-radius:8px;background:#22c55e;color:#06110f;font-weight:700;font-size:1rem}
+h1{font-size:1.5rem;margin:.5rem 0}
+h2{font-size:1.1rem;margin:1.5rem 0 .5rem}
+label{display:block;margin:.8rem 0 .3rem;color:#8ea39b;font-size:.9rem}
+input{width:100%;padding:.7rem;border-radius:8px;border:1px solid #1d2f29;background:#0e1c18;color:#f3f6f4;font:inherit}
+button,.btn{display:inline-block;width:100%;margin-top:1rem;padding:.9rem;border:0;border-radius:8px;background:#22c55e;color:#06110f;font-weight:700;font-size:1rem;text-align:center;text-decoration:none;box-sizing:border-box}
+button.ghost{width:auto;margin:0;padding:.5rem .9rem;background:#1d2f29;color:#f3f6f4;font-weight:500;font-size:.9rem}
+.row{display:flex;justify-content:space-between;align-items:center;gap:.5rem;color:#8ea39b;font-size:.9rem}
 .preview{margin-top:1rem;padding:.8rem;border:1px solid #1d2f29;border-radius:8px;background:#0e1c18;color:#8ea39b;font-size:.9rem}
-.err{color:#f87171;margin-top:.6rem;min-height:1.2em}
+.err{color:#f87171;margin-top:.6rem;min-height:1.2em;font-size:.9rem}
+.cust{padding:.8rem;border:1px solid #1d2f29;border-radius:8px;background:#0e1c18;margin-bottom:.6rem}
+.cust .btn{margin-top:.5rem;padding:.6rem;font-size:.9rem}
 </style>
 </head>
 <body>
 <main>
-<h1>Send review request</h1>
-<form id="f">
-<label for="biz">Business name</label>
-<input id="biz" required placeholder="Bloom & Bean">
-<label for="link">Google review link</label>
-<input id="link" required type="url" placeholder="https://g.page/r/...">
-<label for="cname">Customer name</label>
-<input id="cname" required placeholder="Maria">
-<label for="phone">Customer WhatsApp number (with country code)</label>
-<input id="phone" required type="tel" placeholder="13055551234">
-<div class="preview" id="preview"></div>
-<div class="err" id="err"></div>
-<button type="submit">Send on WhatsApp</button>
-</form>
+<h1>Xen</h1>
+
+<section id="login" hidden>
+  <h2>Sign in</h2>
+  <label for="email">Email</label>
+  <input id="email" type="email" autocomplete="username">
+  <label for="password">Password</label>
+  <input id="password" type="password" autocomplete="current-password">
+  <button id="signinBtn">Sign in</button>
+  <div class="err" id="loginErr"></div>
+</section>
+
+<section id="app" hidden>
+  <div class="row"><span id="who"></span><button class="ghost" id="signoutBtn">Sign out</button></div>
+
+  <h2>New customer</h2>
+  <form id="f">
+    <label for="biz">Business name</label>
+    <input id="biz" required placeholder="Bloom & Bean">
+    <label for="link">Google review link</label>
+    <input id="link" required type="url" placeholder="https://g.page/r/...">
+    <label for="cname">Customer name</label>
+    <input id="cname" required placeholder="Maria">
+    <label for="phone">Customer WhatsApp number (country code, no +)</label>
+    <input id="phone" required type="tel" placeholder="13055551234">
+    <div class="preview" id="preview"></div>
+    <div class="err" id="err"></div>
+    <button type="submit">Save customer</button>
+  </form>
+
+  <h2>Recent customers</h2>
+  <div id="list"></div>
+</section>
 </main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
+const SUPABASE_URL = 'PASTE_YOUR_PROJECT_URL';
+const SUPABASE_KEY = 'PASTE_YOUR_PUBLISHABLE_KEY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
-function message(){
-  return `Hi ${$('cname').value.trim()}, thanks for visiting ${$('biz').value.trim()}! Would you mind sharing your experience on Google? ${$('link').value.trim()}`;
+
+function waMessage(biz, name, link){
+  return `Hi ${name}, thanks for visiting ${biz}! Would you mind sharing your experience on Google? ${link}`;
 }
-function updatePreview(){ $('preview').textContent = message(); }
-['biz','link','cname','phone'].forEach(id => $(id).addEventListener('input', updatePreview));
+function updatePreview(){
+  $('preview').textContent = waMessage($('biz').value.trim(), $('cname').value.trim(), $('link').value.trim());
+}
+['biz','link','cname'].forEach(id => $(id).addEventListener('input', updatePreview));
 updatePreview();
-$('f').addEventListener('submit', e => {
-  e.preventDefault();
-  const digits = $('phone').value.replace(/\D/g,'');
-  if (digits.length < 8) { $('err').textContent = 'Enter the number with country code, digits only, e.g. 13055551234.'; return; }
-  $('err').textContent = '';
-  window.location.href = 'https://wa.me/' + digits + '?text=' + encodeURIComponent(message());
+
+function showApp(session){
+  const signedIn = !!session;
+  $('login').hidden = signedIn;
+  $('app').hidden = !signedIn;
+  if (signedIn) {
+    $('who').textContent = session.user.email;
+    loadList();
+  }
+}
+sb.auth.onAuthStateChange((_event, session) => showApp(session));
+
+$('signinBtn').addEventListener('click', async () => {
+  $('loginErr').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({
+    email: $('email').value.trim(),
+    password: $('password').value
+  });
+  if (error) $('loginErr').textContent = error.message;
 });
+$('signoutBtn').addEventListener('click', () => sb.auth.signOut());
+
+async function loadList(){
+  const list = $('list');
+  list.textContent = 'Loading…';
+  const { data, error } = await sb.from('customers')
+    .select('*').order('created_at', { ascending: false }).limit(20);
+  list.textContent = '';
+  if (error) { list.textContent = error.message; return; }
+  if (!data.length) { list.textContent = 'No customers yet.'; return; }
+  data.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'cust';
+    const title = document.createElement('div');
+    title.textContent = c.customer_name + ' · ' + c.business_name;
+    const a = document.createElement('a');
+    a.className = 'btn';
+    a.textContent = 'Send on WhatsApp';
+    a.href = 'https://wa.me/' + c.phone + '?text=' +
+      encodeURIComponent(waMessage(c.business_name, c.customer_name, c.review_link || ''));
+    div.append(title, a);
+    list.append(div);
+  });
+}
+
+$('f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const digits = $('phone').value.replace(/\D/g, '');
+  if (digits.length < 8) {
+    $('err').textContent = 'Enter the number with country code, digits only, e.g. 13055551234.';
+    return;
+  }
+  $('err').textContent = 'Saving…';
+  const { error } = await sb.from('customers').insert({
+    business_name: $('biz').value.trim(),
+    customer_name: $('cname').value.trim(),
+    phone: digits,
+    review_link: $('link').value.trim()
+  });
+  if (error) { $('err').textContent = error.message; return; }
+  $('err').textContent = 'Saved.';
+  $('cname').value = '';
+  $('phone').value = '';
+  updatePreview();
+  loadList();
+});
+
+sb.auth.getSession().then(({ data }) => showApp(data.session));
 </script>
 </body>
-  </html>
+</html>

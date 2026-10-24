@@ -10,32 +10,33 @@ main{max-width:480px;margin:0 auto;padding:1.25rem}
 h1{font-size:1.5rem;margin:.5rem 0}
 h2{font-size:1.1rem;margin:1.5rem 0 .5rem}
 label{display:block;margin:.8rem 0 .3rem;color:#8ea39b;font-size:.9rem}
-input{width:100%;padding:.7rem;border-radius:8px;border:1px solid #1d2f29;background:#0e1c18;color:#f3f6f4;font:inherit}
-button,.btn{display:inline-block;width:100%;margin-top:1rem;padding:.9rem;border:0;border-radius:8px;background:#22c55e;color:#06110f;font-weight:700;font-size:1rem;text-align:center;text-decoration:none;box-sizing:border-box}
+input{width:100%;padding:.7rem;border-radius:8px;border:1px solid #1d2f29;background:#0e1c18;color:#f3f6f4;font:inherit;box-sizing:border-box}
+button,.btn{display:inline-block;width:100%;margin-top:1rem;padding:.9rem;border:0;border-radius:8px;background:#22c55e;color:#06110f;font-weight:700;font-size:1rem;text-align:center;text-decoration:none;box-sizing:border-box;cursor:pointer}
 button.ghost{width:auto;margin:0;padding:.5rem .9rem;background:#1d2f29;color:#f3f6f4;font-weight:500;font-size:.9rem}
 .row{display:flex;justify-content:space-between;align-items:center;gap:.5rem;color:#8ea39b;font-size:.9rem}
 .preview{margin-top:1rem;padding:.8rem;border:1px solid #1d2f29;border-radius:8px;background:#0e1c18;color:#8ea39b;font-size:.9rem}
-.err{color:#f87171;margin-top:.6rem;min-height:1.2em;font-size:.9rem}
+.err{color:#f87171;margin-top:.6rem;min-height:1.2em;font-size:.9rem;word-break:break-word}
 .cust{padding:.8rem;border:1px solid #1d2f29;border-radius:8px;background:#0e1c18;margin-bottom:.6rem}
 .cust .btn{margin-top:.5rem;padding:.6rem;font-size:.9rem}
+#debug{color:#fbbf24;font-size:.8rem;margin-top:2rem;word-break:break-word}
 </style>
 </head>
 <body>
 <main>
 <h1>Xen</h1>
 
-<section id="login"> 
+<section id="login">
   <h2>Sign in</h2>
   <label for="email">Email</label>
   <input id="email" type="email" autocomplete="username">
   <label for="password">Password</label>
   <input id="password" type="password" autocomplete="current-password">
-  <button id="signinBtn">Sign in</button>
+  <button id="signinBtn" type="button">Sign in</button>
   <div class="err" id="loginErr"></div>
 </section>
 
 <section id="app" hidden>
-  <div class="row"><span id="who"></span><button class="ghost" id="signoutBtn">Sign out</button></div>
+  <div class="row"><span id="who"></span><button class="ghost" id="signoutBtn" type="button">Sign out</button></div>
 
   <h2>New customer</h2>
   <form id="f">
@@ -55,13 +56,16 @@ button.ghost{width:auto;margin:0;padding:.5rem .9rem;background:#1d2f29;color:#f
   <h2>Recent customers</h2>
   <div id="list"></div>
 </section>
+
+<div id="debug"></div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
+window.onerror = (msg) => { document.getElementById('debug').textContent += ' | ' + msg; };
+
 const SUPABASE_URL = 'https://yehtzllmjkjrfzyjfnpv.supabase.co';
- window.onerror = (m) => { document.body.insertAdjacentHTML('beforeend', '<p style="color:#f87171">' + m + '</p>'); }; 
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllaHR6bGxtamtqcmZ6eWpmbnB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NzgzNDgsImV4cCI6MjEwNTA1NDM0OH0.s_n1aZQgnkahgQNyvcYGTfYbEXqgx2MH2Fp_mDJ60GQ;
+const SUPABASE_KEY = 'PASTE_YOUR_ANON_KEY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
 
@@ -86,12 +90,16 @@ function showApp(session){
 sb.auth.onAuthStateChange((_event, session) => showApp(session));
 
 $('signinBtn').addEventListener('click', async () => {
-  $('loginErr').textContent = '';
-  const { error } = await sb.auth.signInWithPassword({
-    email: $('email').value.trim(),
-    password: $('password').value
-  });
-  if (error) $('loginErr').textContent = error.message;
+  $('loginErr').textContent = 'Signing in…';
+  try {
+    const { error } = await sb.auth.signInWithPassword({
+      email: $('email').value.trim(),
+      password: $('password').value
+    });
+    $('loginErr').textContent = error ? error.message : '';
+  } catch (err) {
+    $('loginErr').textContent = 'Error: ' + err.message;
+  }
 });
 $('signoutBtn').addEventListener('click', () => sb.auth.signOut());
 

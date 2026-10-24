@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xen – Send WhatsApp review request</title>
+<style>
+body{margin:0;font:16px/1.5 system-ui,sans-serif;background:#06110e;color:#f3f6f4}
+main{max-width:480px;margin:0 auto;padding:1.25rem}
+h1{font-size:1.5rem;margin:.5rem 0 1rem}
+label{display:block;margin:.9rem 0 .3rem;color:#8ea39b;font-size:.9rem}
+input{width:100%;padding:.7rem;border-radius:8px;border:1px solid #1d2f29;background:#0e1c18;color:#f3f6f4;font:inherit;box-sizing:border-box}
+button{width:100%;margin-top:1.2rem;padding:.9rem;border:0;border-radius:8px;background:#22c55e;color:#06110f;font-weight:700;font-size:1rem}
+.preview{margin-top:1rem;padding:.8rem;border:1px solid #1d2f29;border-radius:8px;background:#0e1c18;color:#8ea39b;font-size:.9rem}
+.err{color:#f87171;margin-top:.6rem;min-height:1.2em}
+</style>
+</head>
+<body>
+<main>
+<h1>Send review request</h1>
+<form id="f">
+<label for="biz">Business name</label>
+<input id="biz" required placeholder="Bloom & Bean">
+<label for="link">Google review link</label>
+<input id="link" required type="url" placeholder="https://g.page/r/...">
+<label for="cname">Customer name</label>
+<input id="cname" required placeholder="Maria">
+<label for="phone">Customer WhatsApp number (with country code)</label>
+<input id="phone" required type="tel" placeholder="13055551234">
+<div class="preview" id="preview"></div>
+<div class="err" id="err"></div>
+<button type="submit">Send on WhatsApp</button>
+</form>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+function message(){
+  return `Hi ${$('cname').value.trim()}, thanks for visiting ${$('biz').value.trim()}! Would you mind sharing your experience on Google? ${$('link').value.trim()}`;
+}
+function updatePreview(){ $('preview').textContent = message(); }
+['biz','link','cname','phone'].forEach(id => $(id).addEventListener('input', updatePreview));
+updatePreview();
+$('f').addEventListener('submit', e => {
+  e.preventDefault();
+  const digits = $('phone').value.replace(/\D/g,'');
+  if (digits.length < 8) { $('err').textContent = 'Enter the number with country code, digits only, e.g. 13055551234.'; return; }
+  $('err').textContent = '';
+  window.location.href = 'https://wa.me/' + digits + '?text=' + encodeURIComponent(message());
+});
+</script>
+</body>
+  </html>

@@ -24,7 +24,7 @@ button.ghost{width:auto;margin:0;padding:.5rem .9rem;background:#1d2f29;color:#f
 <main>
 <h1>Xen</h1>
 
-<section id="login" hidden>
+<section id="login"> 
   <h2>Sign in</h2>
   <label for="email">Email</label>
   <input id="email" type="email" autocomplete="username">
@@ -60,6 +60,7 @@ button.ghost{width:auto;margin:0;padding:.5rem .9rem;background:#1d2f29;color:#f
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 const SUPABASE_URL = 'https://yehtzllmjkjrfzyjfnpv.supabase.co';
+ window.onerror = (m) => { document.body.insertAdjacentHTML('beforeend', '<p style="color:#f87171">' + m + '</p>'); }; 
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllaHR6bGxtamtqcmZ6eWpmbnB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NzgzNDgsImV4cCI6MjEwNTA1NDM0OH0.s_n1aZQgnkahgQNyvcYGTfYbEXqgx2MH2Fp_mDJ60GQ;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);

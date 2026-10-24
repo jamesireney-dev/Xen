@@ -65,7 +65,7 @@ button.ghost{width:auto;margin:0;padding:.5rem .9rem;background:#1d2f29;color:#f
 window.onerror = (msg) => { document.getElementById('debug').textContent += ' | ' + msg; };
 
 const SUPABASE_URL = 'https://yehtzllmjkjrfzyjfnpv.supabase.co';
-const SUPABASE_KEY = 'PASTE_YOUR_ANON_KEY';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllaHR6bGxtamtqcmZ6eWpmbnB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NzgzNDgsImV4cCI6MjEwNTA1NDM0OH0.s_n1aZQgnkahgQNyvcYGTfYbEXqgx2MH2Fp_mDJ60GQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
 

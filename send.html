@@ -13,10 +13,13 @@ label{display:block;margin:.8rem 0 .3rem;color:#8ea39b;font-size:.9rem}
 input{width:100%;padding:.7rem;border-radius:8px;border:1px solid #1d2f29;background:#0e1c18;color:#f3f6f4;font:inherit;box-sizing:border-box}
 button,.btn{display:inline-block;width:100%;margin-top:1rem;padding:.9rem;border:0;border-radius:8px;background:#22c55e;color:#06110f;font-weight:700;font-size:1rem;text-align:center;text-decoration:none;box-sizing:border-box;cursor:pointer}
 button.ghost{width:auto;margin:0;padding:.5rem .9rem;background:#1d2f29;color:#f3f6f4;font-weight:500;font-size:.9rem}
+button.danger{background:#7f1d1d;color:#fecaca;margin-top:.4rem;padding:.6rem;font-size:.9rem}
 .row{display:flex;justify-content:space-between;align-items:center;gap:.5rem;color:#8ea39b;font-size:.9rem}
 .preview{margin-top:1rem;padding:.8rem;border:1px solid #1d2f29;border-radius:8px;background:#0e1c18;color:#8ea39b;font-size:.9rem;word-break:break-word}
 .err{color:#f87171;margin-top:.6rem;min-height:1.2em;font-size:.9rem;word-break:break-word}
+.ok{color:#7fe3a4}
 .cust{padding:.8rem;border:1px solid #1d2f29;border-radius:8px;background:#0e1c18;margin-bottom:.6rem}
+.cust .meta{color:#8ea39b;font-size:.85rem}
 .cust .btn{margin-top:.5rem;padding:.6rem;font-size:.9rem}
 </style>
 </head>
@@ -62,13 +65,16 @@ button.ghost{width:auto;margin:0;padding:.5rem .9rem;background:#1d2f29;color:#f
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 const SUPABASE_URL = 'https://yehtzllmjkjrfzyjfnpv.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllaHR6bGxtamtqcmZ6eWpmbnB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0NzgzNDgsImV4cCI6MjEwNTA1NDM0OH0.s_n1aZQgnkahgQNyvcYGTfYbEXqgx2MH2Fp_mDJ60GQ';
+const SUPABASE_KEY = 'PASTE_YOUR_ANON_KEY';
+const WEBHOOK_URL = 'https://hook.eu1.make.com/jgtx6jvv3sha05n9cisj9q5d48es1uql';
+
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
 
 function waMessage(biz, name, link){
   return `Hi ${name}, thanks for visiting ${biz}! Would you mind sharing your experience on Google? ${link}`;
 }
+
 function updatePreview(){
   $('preview').textContent = waMessage($('biz').value.trim(), $('cname').value.trim(), $('link').value.trim());
 }
@@ -108,18 +114,35 @@ async function loadList(){
   list.textContent = '';
   if (error) { list.textContent = error.message; return; }
   if (!data.length) { list.textContent = 'No customers yet.'; return; }
+
   data.forEach(c => {
     const div = document.createElement('div');
     div.className = 'cust';
+
     const title = document.createElement('div');
-    title.textContent = c.customer_name + ' · ' + c.business_name +
-      (c.email ? ' · ' + c.email : '');
-    const a = document.createElement('a');
-    a.className = 'btn';
-    a.textContent = 'Send on WhatsApp';
-    a.href = 'https://wa.me/' + c.phone + '?text=' +
+    title.textContent = c.customer_name + ' · ' + c.business_name;
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = '+' + c.phone + (c.email ? ' · ' + c.email : '');
+
+    const wa = document.createElement('a');
+    wa.className = 'btn';
+    wa.textContent = 'Send on WhatsApp';
+    wa.href = 'https://wa.me/' + c.phone + '?text=' +
       encodeURIComponent(waMessage(c.business_name, c.customer_name, c.review_link || ''));
-    div.append(title, a);
+
+    const del = document.createElement('button');
+    del.className = 'danger';
+    del.textContent = 'Delete';
+    del.addEventListener('click', async () => {
+      if (!confirm('Delete ' + c.customer_name + '?')) return;
+      const { error } = await sb.from('customers').delete().eq('id', c.id);
+      if (error) { alert(error.message); return; }
+      loadList();
+    });
+
+    div.append(title, meta, wa, del);
     list.append(div);
   });
 }
@@ -131,16 +154,38 @@ $('f').addEventListener('submit', async e => {
     $('err').textContent = 'Enter the number with country code, digits only, e.g. 13055551234.';
     return;
   }
-  $('err').textContent = 'Saving…';
-  const { error } = await sb.from('customers').insert({
+
+  const customer = {
     business_name: $('biz').value.trim(),
     customer_name: $('cname').value.trim(),
     phone: digits,
     review_link: $('link').value.trim(),
     email: $('email').value.trim() || null
-  });
+  };
+
+  $('err').textContent = 'Saving…';
+  const { error } = await sb.from('customers').insert(customer);
   if (error) { $('err').textContent = error.message; return; }
-  $('err').textContent = 'Saved.';
+
+  // Tell Make so it can send the email after the wait
+  if (customer.email) {
+    try {
+      await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(customer)
+      });
+      $('err').className = 'err ok';
+      $('err').textContent = 'Saved. Email will be sent shortly.';
+    } catch (_) {
+      $('err').className = 'err';
+      $('err').textContent = 'Saved, but the email request failed to send.';
+    }
+  } else {
+    $('err').className = 'err ok';
+    $('err').textContent = 'Saved.';
+  }
+
   $('cname').value = '';
   $('phone').value = '';
   $('email').value = '';
